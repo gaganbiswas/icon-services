@@ -12,6 +12,7 @@ import { DocumentsModule } from './documents/documents.module.js';
 import { FilesModule } from './files/files.module.js';
 import type { Env } from './config/env.js';
 import { HealthModule } from './health/health.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
 import { EstimatesModule } from './estimates/estimates.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -45,6 +46,7 @@ export class AppModule {
         AssetsModule,
         JobsModule,
         EstimatesModule,
+        InventoryModule,
         NotificationsModule,
         CustomerPortalModule,
       ],

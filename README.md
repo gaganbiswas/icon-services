@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 5 complete — versioned estimates and customer approval (Android app or single-use link on the
-> customer website). Inventory starts in Phase 6. Tax is not calculated until the accountant confirms configuration.
+> **Status:** Phase 6 complete — parts catalogue, branch stock with an append-only ledger, job parts and low-stock
+> report. Invoicing (Phase 7) waits for written tax confirmation from the accountant.
 
 ## Repository layout
 

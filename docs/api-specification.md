@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 5 (2026-11-18).
+Updated: Phase 6 (2026-11-18).
 
 ## Conventions
 
@@ -107,6 +107,26 @@ Tax is not calculated (`taxNote`: "Taxes, if applicable, to be confirmed.").
 | POST | `/public/estimate-links/decision` | public, rate-limited | `{token, decision, termsAccepted, comment?}` — consumes the link |
 | GET | `/customer/jobs/:id/estimates` | customer | Own, non-draft versions |
 | POST | `/customer/estimates/:id/decision` | customer | `{decision, termsAccepted, comment?}`; errors `ESTIMATE_EXPIRED`, `ESTIMATE_ALREADY_DECIDED` |
+
+## Phase 6 endpoints (inventory, ADR 0015)
+
+Quantities are decimal strings (4 decimals). Stock that would fall below zero returns `409 INSUFFICIENT_STOCK` unless
+`allowNegative: true` with a reason is sent by a holder of `inventory.negative_override`.
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/parts?q=&includeInactive=` | `inventory.read` | Catalogue search |
+| POST / PATCH | `/parts`, `/parts/:id` | `inventory.write` | PATCH needs `version` |
+| GET / POST | `/suppliers` | `inventory.read` / `inventory.write` | |
+| GET | `/inventory/stock?branchId=&belowReorder=&q=` | `inventory.read` | Stock levels; `belowReorder=true` = low-stock report |
+| POST | `/inventory/receipts` | `inventory.write` | `{branchId, partId, quantity, unitCost?, supplierId?, reference?}` |
+| POST | `/inventory/adjustments` | `inventory.adjust` | `{…, direction, quantity, reason, allowNegative?}` |
+| POST | `/inventory/transfers` | `inventory.adjust` | Requires access to both branches |
+| GET | `/inventory/movements?branchId=&partId=&jobId=` | `inventory.read` | Ledger |
+| GET | `/inventory/reconciliation?branchId=` | `inventory.adjust` | Rows whose totals differ from the ledger (expected `[]`) |
+| GET | `/jobs/:id/parts` | `jobs.read` | |
+| POST | `/jobs/:id/parts` | `worklogs.write` | `{partId, action: RESERVE|RELEASE|CONSUME|RETURN, quantity, allowNegative?, reason?}`; assigned technicians only |
+| PUT | `/jobs/:id/parts/removed` | `worklogs.write` | Removed/defective part description, serial, disposition |
 
 ### Customer API (customer access token; identity from token only)
 

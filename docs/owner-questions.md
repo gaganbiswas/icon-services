@@ -78,7 +78,7 @@ confirmation from the business's accountant / tax professional.
 38. Payment methods to enable: cash, UPI, bank transfer, card terminal,
     cheque, other? Any limit on cash amounts? _answer_
 39. Is inventory tracked today? Number of SKUs, suppliers to track? Existing
-    data to import (customers, parts, open jobs) — format? _answer_
+    data to import (customers, parts, open jobs) — format? _answer_ (Built: catalogue, branch stock ledger, optional suppliers; no import yet — ADR 0015.)
 40. Thermal receipt printer model/paper width (58 mm / 80 mm), or A4 only? _answer_
 
 ## E. Languages and customer experience

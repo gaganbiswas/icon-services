@@ -9,6 +9,7 @@ import { StatusBadge, statusLabel } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { AssignmentsPanel } from '../../components/job/AssignmentsPanel';
 import { EstimatesPanel } from '../../components/job/EstimatesPanel';
+import { PartsPanel } from '../../components/job/PartsPanel';
 import { ReceivePanel } from '../../components/job/ReceivePanel';
 import { StatusPanel } from '../../components/job/StatusPanel';
 import { CompletionPanel, DiagnosisPanel, WorkLogPanel } from '../../components/job/WorkPanels';
@@ -162,6 +163,15 @@ export function JobDetailPage() {
                         </section>
                       </>
                     )}
+                  </ResourceView>
+                ),
+              },
+              {
+                id: 'parts',
+                label: 'Parts',
+                content: (
+                  <ResourceView resource={workspace}>
+                    {(ws) => <PartsPanel job={j} canWork={ws.canWork} />}
                   </ResourceView>
                 ),
               },

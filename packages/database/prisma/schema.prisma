@@ -10,6 +10,7 @@
 // Phase 3: customers, assets, files, intake, numbering, settings, documents.
 // Phase 4: lifecycle, assignments, diagnoses, work logs, notification outbox.
 // Phase 5: estimates, lines, customer decisions, approval links.
+// Phase 6: parts, suppliers, branch stock, stock ledger, job parts.
 
 generator client {
   provider            = "prisma-client"
@@ -707,6 +708,7 @@ model ServiceJob {
   diagnoses     Diagnosis[]
   workLogs      WorkLog[]
   estimates     Estimate[]
+  parts         JobPart[]
 
   @@unique([organizationId, jobNumber])
   @@unique([organizationId, id])
@@ -1100,4 +1102,142 @@ model EstimateApprovalLink {
 
   @@index([estimateId])
   @@map("estimate_approval_links")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory (Phase 6, ADR 0015). Quantities and money: NUMERIC(19,4).
+// ---------------------------------------------------------------------------
+
+model Part {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  sku            String   @db.VarChar(60)
+  name           String   @db.VarChar(200)
+  description    String?  @db.VarChar(1000)
+  category       String?  @db.VarChar(100)
+  unit           String   @db.VarChar(20)
+  reorderLevel   Decimal  @default(0) @map("reorder_level") @db.Decimal(19, 4)
+  sellingPrice   Decimal? @map("selling_price") @db.Decimal(19, 4)
+  /// Tax category placeholder — null until approved tax configuration (Phase 7).
+  taxCategory    String?  @map("tax_category") @db.VarChar(50)
+  isActive       Boolean  @default(true) @map("is_active")
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  stock     BranchStock[]
+  movements StockMovement[]
+  jobParts  JobPart[]
+
+  @@unique([organizationId, sku])
+  @@unique([organizationId, id])
+  @@map("parts")
+}
+
+model Supplier {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  phone          String?  @db.VarChar(32)
+  email          String?  @db.VarChar(254)
+  notes          String?  @db.VarChar(1000)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  movements StockMovement[]
+
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
+model BranchStock {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  partId         String   @map("part_id") @db.Uuid
+  onHand         Decimal  @default(0) @map("on_hand") @db.Decimal(19, 4)
+  reserved       Decimal  @default(0) @db.Decimal(19, 4)
+  /// Branch-specific override of the part's reorder level.
+  reorderLevel   Decimal? @map("reorder_level") @db.Decimal(19, 4)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  part Part @relation(fields: [organizationId, partId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([branchId, partId])
+  @@index([organizationId, partId])
+  @@map("branch_stock")
+}
+
+enum StockMovementType {
+  RECEIVE
+  ADJUST
+  TRANSFER_OUT
+  TRANSFER_IN
+  RESERVE
+  RELEASE
+  CONSUME
+  RETURN
+
+  @@map("stock_movement_type")
+}
+
+/// Append-only stock ledger. branch_stock must equal the sum of these deltas.
+model StockMovement {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+  branchId         String            @map("branch_id") @db.Uuid
+  partId           String            @map("part_id") @db.Uuid
+  type             StockMovementType
+  onHandDelta      Decimal           @map("on_hand_delta") @db.Decimal(19, 4)
+  reservedDelta    Decimal           @map("reserved_delta") @db.Decimal(19, 4)
+  unitCost         Decimal?          @map("unit_cost") @db.Decimal(19, 4)
+  supplierId       String?           @map("supplier_id") @db.Uuid
+  jobId            String?           @map("job_id") @db.Uuid
+  /// Pairs TRANSFER_OUT/TRANSFER_IN movements.
+  transferId       String?           @map("transfer_id") @db.Uuid
+  reference        String?           @db.VarChar(100)
+  reason           String?           @db.VarChar(500)
+  negativeOverride Boolean           @default(false) @map("negative_override")
+  actorUserId      String            @map("actor_user_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  part     Part      @relation(fields: [organizationId, partId], references: [organizationId, id], onDelete: Restrict)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@index([branchId, partId, createdAt])
+  @@index([jobId])
+  @@map("stock_movements")
+}
+
+enum RemovedPartDisposition {
+  RETURNED_TO_CUSTOMER
+  SENT_TO_VENDOR
+  SCRAPPED
+  KEPT_FOR_WARRANTY_CLAIM
+
+  @@map("removed_part_disposition")
+}
+
+/// Parts used on a job (quantities kept in step with stock movements).
+model JobPart {
+  id                     String                  @id @default(uuid(7)) @db.Uuid
+  jobId                  String                  @map("job_id") @db.Uuid
+  organizationId         String                  @map("organization_id") @db.Uuid
+  branchId               String                  @map("branch_id") @db.Uuid
+  partId                 String                  @map("part_id") @db.Uuid
+  reserved               Decimal                 @default(0) @db.Decimal(19, 4)
+  consumed               Decimal                 @default(0) @db.Decimal(19, 4)
+  returned               Decimal                 @default(0) @db.Decimal(19, 4)
+  removedPartDescription String?                 @map("removed_part_description") @db.VarChar(300)
+  removedPartSerial      String?                 @map("removed_part_serial") @db.VarChar(100)
+  disposition            RemovedPartDisposition?
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  job  ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  part Part       @relation(fields: [organizationId, partId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([jobId, partId])
+  @@map("job_parts")
 }

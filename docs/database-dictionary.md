@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 5 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 6 (2026-11-18).
 
 ## Conventions
 
@@ -106,6 +106,16 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `estimate_decisions` | One per estimate; decision, method (CUSTOMER_APP/APPROVAL_LINK), customer, estimate version, approved amount snapshot, terms accepted + SHA-256 of terms, comment, optional IP/user agent; append-only |
 | `estimate_approval_links` | Token SHA-256 (unique), expiry, used / revoked time; single-use |
 
+## Tables (Phase 6, ADR 0015)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `parts` | Unique `(organization_id, sku)`, SKU format CHECK; reorder level, optional selling price (NUMERIC(19,4)); `tax_category` placeholder (null until Phase 7) |
+| `suppliers` | Optional supplier records |
+| `branch_stock` | Unique `(branch_id, part_id)`; `on_hand`, `reserved` (≥ 0 CHECK); optional branch reorder level. Changed only by one conditional UPDATE together with a ledger row |
+| `stock_movements` | Append-only ledger (trigger). Signed `on_hand_delta` / `reserved_delta` with per-type direction CHECKs; ADJUST and overrides require a reason; job movements require `job_id`; transfers paired by `transfer_id`. `branch_stock` must equal the sum of deltas (`GET /inventory/reconciliation`) |
+| `job_parts` | Per job and part: reserved, consumed, returned (≥ 0) and removed/defective part description, serial and disposition |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -118,6 +128,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase6_inventory` | Parts, suppliers, branch stock, ledger, job parts; constraints and append-only trigger |
 | `…_phase5_estimates` | Estimates, lines, decisions, links; immutability triggers |
 | `…_phase4_lifecycle_work_notifications`, `…_phase4_outbox_branch` | Phase 4 tables, constraints and append-only triggers |
 | `…_phase3_customers_assets_intake` | Phase 3 tables, `pg_trgm`, consent partial unique index, append-only status-history and documents triggers |

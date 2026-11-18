@@ -4,6 +4,7 @@ import {
   type Estimate,
   type EstimateLineInput,
   type JobDetail,
+  type Part,
   type SentEstimateResponse,
   computeLine,
   computeTotals,
@@ -118,6 +119,38 @@ function EstimateView({ estimate }: { estimate: Estimate }) {
   );
 }
 
+/** Copies catalogue details into an estimate line (a snapshot, never a live link). */
+function CataloguePicker({ onPick }: { onPick: (part: Part) => void }) {
+  const { client } = useAuth();
+  const [q, setQ] = useState('');
+  const parts = useResource(
+    () => (q.length >= 2 ? client.get<Part[]>('/parts', { q }) : Promise.resolve([])),
+    [client, q],
+  );
+  return (
+    <details>
+      <summary>Fill from parts catalogue</summary>
+      <label>
+        Search
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value.trim())} />
+      </label>
+      {parts.status === 'ready' && parts.data.length > 0 ? (
+        <ul>
+          {parts.data.map((p) => (
+            <li key={p.id}>
+              <button type="button" className="secondary" onClick={() => onPick(p)}>
+                Use
+              </button>{' '}
+              {p.sku} — {p.name}
+              {p.sellingPrice ? ` · ${p.sellingPrice.replace(/\.?0+$/, '')}` : ''}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
+  );
+}
+
 function DraftEditor({
   job,
   existing,
@@ -130,6 +163,7 @@ function DraftEditor({
   onSaved: () => void;
 }) {
   const { client } = useAuth();
+  const canPickParts = useCan('inventory.read');
   const [lines, setLines] = useState<EstimateLineInput[]>(
     existing ? existing.lines.map((l) => ({ ...l, sku: l.sku ?? undefined })) : [emptyLine()],
   );
@@ -228,6 +262,19 @@ function DraftEditor({
                 </select>
               </label>
             </div>
+            {canPickParts ? (
+              <CataloguePicker
+                onPick={(p) =>
+                  update(index, {
+                    lineType: 'PART',
+                    sku: p.sku,
+                    description: p.name,
+                    unit: p.unit,
+                    ...(p.sellingPrice ? { unitPrice: p.sellingPrice } : {}),
+                  })
+                }
+              />
+            ) : null}
             <p className="small">
               Line amount:{' '}
               {amounts && currency

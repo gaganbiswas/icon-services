@@ -35,6 +35,16 @@
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
+    },
+    "@icon/database#typecheck": {
+      "dependsOn": ["build"]
+    },
+    "@icon/database#lint": {
+      "dependsOn": ["build"]
+    },
+    "@icon/database#test": {
+      "dependsOn": ["build"],
+      "outputs": []
     }
   }
 }

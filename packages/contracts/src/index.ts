@@ -7,6 +7,7 @@ export * from './errors.js';
 export * from './estimates.js';
 export * from './files.js';
 export * from './health.js';
+export * from './inventory.js';
 export * from './jobs.js';
 export * from './lifecycle.js';
 export * from './money.js';
