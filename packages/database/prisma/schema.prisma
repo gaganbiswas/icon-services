@@ -7,6 +7,7 @@
 // - Financial records and audit history are never hard-deleted.
 //
 // Phase 2: tenancy, identity, RBAC, sessions and audit.
+// Phase 3: customers, assets, files, intake, numbering, settings, documents.
 
 generator client {
   provider            = "prisma-client"
@@ -40,10 +41,17 @@ model Organization {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches  Branch[]
-  users     User[]
-  roles     Role[]
-  auditLogs AuditLog[]
+  branches        Branch[]
+  users           User[]
+  roles           Role[]
+  auditLogs       AuditLog[]
+  customers       Customer[]
+  assetCategories AssetCategory[]
+  assets          Asset[]
+  files           StoredFile[]
+  serviceJobs     ServiceJob[]
+  documents       Document[]
+  settings        BusinessSetting[]
 
   @@map("organizations")
 }
@@ -68,6 +76,7 @@ model Branch {
 
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   userAccess   UserBranchAccess[]
+  serviceJobs  ServiceJob[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -196,25 +205,37 @@ model UserBranchAccess {
 // Sessions and tokens (ADR 0010)
 // ---------------------------------------------------------------------------
 
-/// One login = one session = one refresh-token family.
-model AuthSession {
-  id            String    @id @default(uuid(7)) @db.Uuid
-  userId        String    @map("user_id") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastUsedAt    DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
-  /// Absolute expiry; refresh cannot extend beyond this.
-  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
-  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
-  /// LOGOUT | REFRESH_TOKEN_REUSE | PASSWORD_CHANGED | PASSWORD_RESET | USER_DEACTIVATED | ADMIN
-  revokedReason String?   @map("revoked_reason") @db.VarChar(50)
-  /// Stored only when AUDIT_STORE_CLIENT_METADATA=true.
-  ipAddress     String?   @map("ip_address") @db.VarChar(45)
-  userAgent     String?   @map("user_agent") @db.VarChar(500)
+enum SessionSubjectType {
+  STAFF
+  CUSTOMER
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@map("session_subject_type")
+}
+
+/// One login = one session = one refresh-token family. Exactly one of
+/// user_id (staff) / customer_id (customer) is set (CHECK in migration).
+model AuthSession {
+  id            String             @id @default(uuid(7)) @db.Uuid
+  subjectType   SessionSubjectType @default(STAFF) @map("subject_type")
+  userId        String?            @map("user_id") @db.Uuid
+  customerId    String?            @map("customer_id") @db.Uuid
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt    DateTime           @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  /// Absolute expiry; refresh cannot extend beyond this.
+  expiresAt     DateTime           @map("expires_at") @db.Timestamptz(3)
+  revokedAt     DateTime?          @map("revoked_at") @db.Timestamptz(3)
+  /// LOGOUT | REFRESH_TOKEN_REUSE | PASSWORD_CHANGED | PASSWORD_RESET | USER_DEACTIVATED | ADMIN
+  revokedReason String?            @map("revoked_reason") @db.VarChar(50)
+  /// Stored only when AUDIT_STORE_CLIENT_METADATA=true.
+  ipAddress     String?            @map("ip_address") @db.VarChar(45)
+  userAgent     String?            @map("user_agent") @db.VarChar(500)
+
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: Restrict)
   refreshTokens RefreshToken[]
 
   @@index([userId])
+  @@index([customerId])
   @@map("auth_sessions")
 }
 
@@ -292,4 +313,484 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorUserId, createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Settings and numbering (ADR 0012)
+// ---------------------------------------------------------------------------
+
+/// Scoped configuration. Values are validated by Zod schemas in
+/// packages/contracts (settings.ts) on every write and read.
+model BusinessSetting {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  key            String   @db.VarChar(100)
+  value          Json
+  version        Int      @default(1)
+  updatedById    String?  @map("updated_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, key])
+  @@map("business_settings")
+}
+
+/// Counters for human-readable numbers. Incremented atomically with
+/// INSERT … ON CONFLICT DO UPDATE … RETURNING inside the business transaction.
+/// branch_scope is the branch ID, or '-' for organization-wide sequences
+/// (avoids NULLs in the unique key).
+model NumberSequence {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchScope    String   @map("branch_scope") @db.VarChar(36)
+  documentType   String   @map("document_type") @db.VarChar(40)
+  /// e.g. "2026" for yearly reset, "ALL" for never.
+  periodKey      String   @map("period_key") @db.VarChar(20)
+  currentValue   BigInt   @map("current_value")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([organizationId, branchScope, documentType, periodKey])
+  @@map("number_sequences")
+}
+
+/// Idempotency records for retried writes (CLAUDE.md §7).
+model IdempotencyKey {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// "user:<uuid>" or "customer:<uuid>"
+  actorKey       String   @map("actor_key") @db.VarChar(80)
+  operation      String   @db.VarChar(60)
+  key            String   @db.VarChar(100)
+  requestHash    String   @map("request_hash") @db.Char(64)
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
+  resourceId     String?  @map("resource_id") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@unique([actorKey, operation, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+
+  @@map("customer_type")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  ANONYMIZED
+
+  @@map("customer_status")
+}
+
+model Customer {
+  id                String         @id @default(uuid(7)) @db.Uuid
+  organizationId    String         @map("organization_id") @db.Uuid
+  customerCode      String         @map("customer_code") @db.VarChar(30)
+  type              CustomerType
+  /// Full name, or legal business name for BUSINESS customers.
+  name              String         @db.VarChar(200)
+  contactPerson     String?        @map("contact_person") @db.VarChar(200)
+  phoneE164         String         @map("phone_e164") @db.VarChar(16)
+  phoneDisplay      String         @map("phone_display") @db.VarChar(32)
+  altPhoneE164      String?        @map("alt_phone_e164") @db.VarChar(16)
+  altPhoneDisplay   String?        @map("alt_phone_display") @db.VarChar(32)
+  email             String?        @db.VarChar(254)
+  /// Optional tax identity (e.g. GSTIN) — unvalidated until jurisdiction confirmed.
+  taxIdentifier     String?        @map("tax_identifier") @db.VarChar(30)
+  /// BCP 47 language tag.
+  preferredLanguage String?        @map("preferred_language") @db.VarChar(20)
+  notes             String?        @db.VarChar(2000)
+  status            CustomerStatus @default(ACTIVE)
+  createdById       String?        @map("created_by_id") @db.Uuid
+  /// INTAKE_STAFF | CUSTOMER_APP | WEB_PORTAL
+  source            String         @default("INTAKE_STAFF") @db.VarChar(20)
+  version           Int            @default(1)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  anonymizedAt      DateTime?      @map("anonymized_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  addresses    CustomerAddress[]
+  consents     CustomerConsent[]
+  assets       Asset[]
+  serviceJobs  ServiceJob[]
+  sessions     AuthSession[]
+
+  @@unique([organizationId, customerCode])
+  @@unique([organizationId, id])
+  @@index([organizationId, phoneE164])
+  @@index([organizationId, altPhoneE164])
+  @@index([organizationId, email])
+  @@map("customers")
+}
+
+enum AddressKind {
+  BILLING
+  SERVICE
+
+  @@map("address_kind")
+}
+
+model CustomerAddress {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  customerId  String      @map("customer_id") @db.Uuid
+  kind        AddressKind
+  line1       String      @db.VarChar(200)
+  line2       String?     @db.VarChar(200)
+  city        String      @db.VarChar(100)
+  region      String?     @db.VarChar(100)
+  postalCode  String?     @map("postal_code") @db.VarChar(20)
+  /// ISO 3166-1 alpha-2.
+  countryCode String      @map("country_code") @db.Char(2)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@unique([customerId, kind])
+  @@map("customer_addresses")
+}
+
+enum ConsentChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+  PUSH
+
+  @@map("consent_channel")
+}
+
+enum ConsentPurpose {
+  SERVICE_UPDATES
+  MARKETING
+
+  @@map("consent_purpose")
+}
+
+/// Append-only consent records. The active consent for a channel/purpose is
+/// the latest row with withdrawn_at IS NULL (partial unique index in SQL).
+model CustomerConsent {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  customerId      String         @map("customer_id") @db.Uuid
+  channel         ConsentChannel
+  purpose         ConsentPurpose
+  policyVersion   String         @map("policy_version") @db.VarChar(50)
+  /// STAFF_ENTRY | CUSTOMER_APP | WEB_PORTAL
+  source          String         @db.VarChar(20)
+  recordedById    String?        @map("recorded_by_id") @db.Uuid
+  grantedAt       DateTime       @default(now()) @map("granted_at") @db.Timestamptz(3)
+  withdrawnAt     DateTime?      @map("withdrawn_at") @db.Timestamptz(3)
+  withdrawnSource String?        @map("withdrawn_source") @db.VarChar(20)
+
+  customer Customer @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@map("customer_consents")
+}
+
+// ---------------------------------------------------------------------------
+// Assets (devices)
+// ---------------------------------------------------------------------------
+
+model AssetCategory {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String   @db.VarChar(30)
+  name           String   @db.VarChar(100)
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assets       Asset[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("asset_categories")
+}
+
+model Asset {
+  id                    String    @id @default(uuid(7)) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  customerId            String    @map("customer_id") @db.Uuid
+  categoryId            String    @map("category_id") @db.Uuid
+  brand                 String    @db.VarChar(100)
+  model                 String    @db.VarChar(150)
+  serialNumber          String?   @map("serial_number") @db.VarChar(100)
+  /// Upper-cased, whitespace/dash-free serial for duplicate detection.
+  serialNormalized      String?   @map("serial_normalized") @db.VarChar(100)
+  assetTag              String?   @map("asset_tag") @db.VarChar(100)
+  purchaseDate          DateTime? @map("purchase_date") @db.Date
+  warrantyStart         DateTime? @map("warranty_start") @db.Date
+  warrantyEnd           DateTime? @map("warranty_end") @db.Date
+  warrantyProvider      String?   @map("warranty_provider") @db.VarChar(150)
+  warrantyReference     String?   @map("warranty_reference") @db.VarChar(150)
+  proofOfPurchaseFileId String?   @map("proof_of_purchase_file_id") @db.Uuid
+  /// Category-specific attributes validated by packages/contracts schemas.
+  attributes            Json      @default("{}")
+  isActive              Boolean   @default(true) @map("is_active")
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  customer        Customer      @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+  category        AssetCategory @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
+  proofOfPurchase StoredFile?   @relation("AssetProofOfPurchase", fields: [proofOfPurchaseFileId], references: [id], onDelete: Restrict)
+  serviceJobs     ServiceJob[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, serialNormalized])
+  @@index([customerId])
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------------------
+// Files
+// ---------------------------------------------------------------------------
+
+enum FileClassification {
+  /// Customer personal data or customer-supplied files.
+  PERSONAL
+  /// Staff-only operational files.
+  INTERNAL
+  /// Generated business documents (receipts, invoices).
+  DOCUMENT
+
+  @@map("file_classification")
+}
+
+model StoredFile {
+  id                   String             @id @default(uuid(7)) @db.Uuid
+  organizationId       String             @map("organization_id") @db.Uuid
+  /// Random object key; never derived from user input.
+  storageKey           String             @unique @map("storage_key") @db.VarChar(200)
+  originalName         String             @map("original_name") @db.VarChar(255)
+  /// Sniffed from content, not trusted from the client.
+  mimeType             String             @map("mime_type") @db.VarChar(100)
+  sizeBytes            Int                @map("size_bytes")
+  sha256               String             @db.Char(64)
+  classification       FileClassification
+  uploadedByUserId     String?            @map("uploaded_by_user_id") @db.Uuid
+  uploadedByCustomerId String?            @map("uploaded_by_customer_id") @db.Uuid
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assetProofs    Asset[]         @relation("AssetProofOfPurchase")
+  jobAttachments JobAttachment[]
+  documents      Document[]
+
+  @@unique([organizationId, id])
+  @@map("files")
+}
+
+// ---------------------------------------------------------------------------
+// Service jobs
+// ---------------------------------------------------------------------------
+
+enum ServiceType {
+  IN_WARRANTY
+  OUT_OF_WARRANTY
+  WARRANTY_UNVERIFIED
+
+  @@map("service_type")
+}
+
+enum ServiceMode {
+  AT_SERVICE_CENTRE
+  ON_SITE
+
+  @@map("service_mode")
+}
+
+enum JobStatus {
+  AWAITING_DEVICE
+  RECEIVED
+  WARRANTY_CHECK
+  DIAGNOSIS
+  ESTIMATE_PREPARATION
+  AWAITING_CUSTOMER_APPROVAL
+  WAITING_FOR_PARTS
+  REPAIR_IN_PROGRESS
+  QUALITY_CHECK
+  REPAIR_COMPLETED
+  READY_FOR_DELIVERY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  ON_HOLD
+
+  @@map("job_status")
+}
+
+enum WarrantyVerification {
+  NOT_CHECKED
+  VERIFIED
+  REJECTED
+
+  @@map("warranty_verification")
+}
+
+enum IntakeChannel {
+  STAFF
+  CUSTOMER_APP
+  WEB_PORTAL
+
+  @@map("intake_channel")
+}
+
+model ServiceJob {
+  id                     String               @id @default(uuid(7)) @db.Uuid
+  organizationId         String               @map("organization_id") @db.Uuid
+  branchId               String               @map("branch_id") @db.Uuid
+  jobNumber              String               @map("job_number") @db.VarChar(40)
+  customerId             String               @map("customer_id") @db.Uuid
+  assetId                String               @map("asset_id") @db.Uuid
+  serviceType            ServiceType          @map("service_type")
+  serviceMode            ServiceMode          @map("service_mode")
+  /// Complaint in the customer's own words.
+  complaint              String               @db.VarChar(4000)
+  /// [{ item, checked, note? }] — configurable checklist, validated in contracts.
+  intakeChecklist        Json                 @default("[]") @map("intake_checklist")
+  accessoriesReceived    String[]             @default([]) @map("accessories_received")
+  conditionNotes         String?              @map("condition_notes") @db.VarChar(2000)
+  /// Service address snapshot for ON_SITE jobs.
+  serviceAddress         Json?                @map("service_address")
+  channel                IntakeChannel
+  status                 JobStatus
+  receivedAt             DateTime?            @map("received_at") @db.Timestamptz(3)
+  receivedById           String?              @map("received_by_id") @db.Uuid
+  expectedCompletionDate DateTime?            @map("expected_completion_date") @db.Date
+  warrantyVerification   WarrantyVerification @default(NOT_CHECKED) @map("warranty_verification")
+  warrantyVerifiedById   String?              @map("warranty_verified_by_id") @db.Uuid
+  warrantyVerifiedAt     DateTime?            @map("warranty_verified_at") @db.Timestamptz(3)
+  warrantyNotes          String?              @map("warranty_notes") @db.VarChar(2000)
+  customerAcknowledgedAt DateTime?            @map("customer_acknowledged_at") @db.Timestamptz(3)
+  /// SIGNED_PAPER | VERBAL | APP_SUBMISSION
+  acknowledgementMethod  String?              @map("acknowledgement_method") @db.VarChar(30)
+  createdById            String?              @map("created_by_id") @db.Uuid
+  createdByCustomerId    String?              @map("created_by_customer_id") @db.Uuid
+  version                Int                  @default(1)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch        Branch             @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  customer      Customer           @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+  asset         Asset              @relation(fields: [organizationId, assetId], references: [organizationId, id], onDelete: Restrict)
+  statusHistory JobStatusHistory[]
+  attachments   JobAttachment[]
+
+  @@unique([organizationId, jobNumber])
+  @@unique([organizationId, id])
+  @@index([organizationId, branchId, status])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([customerId])
+  @@index([assetId])
+  @@map("service_jobs")
+}
+
+/// Append-only (UPDATE/DELETE blocked by trigger).
+model JobStatusHistory {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  jobId           String     @map("job_id") @db.Uuid
+  fromStatus      JobStatus? @map("from_status")
+  toStatus        JobStatus  @map("to_status")
+  actorUserId     String?    @map("actor_user_id") @db.Uuid
+  actorCustomerId String?    @map("actor_customer_id") @db.Uuid
+  /// STAFF_WEB | CUSTOMER_APP | WEB_PORTAL | SYSTEM
+  channel         String     @db.VarChar(20)
+  reason          String?    @db.VarChar(1000)
+  customerMessage String?    @map("customer_message") @db.VarChar(1000)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@index([jobId, createdAt])
+  @@map("job_status_history")
+}
+
+enum AttachmentVisibility {
+  INTERNAL
+  CUSTOMER
+
+  @@map("attachment_visibility")
+}
+
+model JobAttachment {
+  id         String               @id @default(uuid(7)) @db.Uuid
+  jobId      String               @map("job_id") @db.Uuid
+  fileId     String               @map("file_id") @db.Uuid
+  /// INTAKE_PHOTO | WARRANTY_PROOF | CUSTOMER_PHOTO | OTHER
+  category   String               @db.VarChar(30)
+  visibility AttachmentVisibility
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job  ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  file StoredFile @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([jobId, fileId])
+  @@map("job_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Generated documents
+// ---------------------------------------------------------------------------
+
+model Document {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String?  @map("branch_id") @db.Uuid
+  /// JOB_RECEIPT (later: ESTIMATE, INVOICE, PAYMENT_RECEIPT, DELIVERY_CHALLAN …)
+  documentType   String   @map("document_type") @db.VarChar(30)
+  entityType     String   @map("entity_type") @db.VarChar(50)
+  entityId       String   @map("entity_id") @db.Uuid
+  documentNumber String   @map("document_number") @db.VarChar(40)
+  /// A4 | THERMAL_80
+  layout         String   @db.VarChar(20)
+  version        Int
+  fileId         String   @map("file_id") @db.Uuid
+  /// Immutable snapshot of the data rendered (reprints never change values).
+  snapshot       Json
+  generatedById  String?  @map("generated_by_id") @db.Uuid
+  generatedAt    DateTime @default(now()) @map("generated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  file         StoredFile   @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([entityType, entityId, documentType, layout, version])
+  @@index([organizationId, documentType, generatedAt(sort: Desc)])
+  @@map("documents")
+}
+
+// ---------------------------------------------------------------------------
+// Customer one-time codes (ADR 0012)
+// ---------------------------------------------------------------------------
+
+model CustomerOtpChallenge {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  phoneE164      String    @map("phone_e164") @db.VarChar(16)
+  /// HMAC-SHA256(code) with a server-side pepper, hex.
+  codeHash       String    @map("code_hash") @db.Char(64)
+  attempts       Int       @default(0)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt     DateTime? @map("consumed_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([organizationId, phoneE164, createdAt(sort: Desc)])
+  @@map("customer_otp_challenges")
 }

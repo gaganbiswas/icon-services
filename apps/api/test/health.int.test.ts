@@ -15,9 +15,12 @@ describe('Health readiness (real services)', () => {
     await t.close();
   });
 
-  it('reports PostgreSQL and Redis as up', async () => {
+  it('reports PostgreSQL, Redis and object storage as up', async () => {
     const response = await request(t.server()).get('/api/v1/health/ready');
-    expect(response.body).toEqual({ status: 'ok', checks: { database: 'up', redis: 'up' } });
+    expect(response.body).toEqual({
+      status: 'ok',
+      checks: { database: 'up', redis: 'up', storage: 'up' },
+    });
     expect(response.status).toBe(200);
   });
 });

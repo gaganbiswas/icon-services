@@ -5,6 +5,8 @@ import type { Request } from 'express';
 
 import { holdsAll } from '../access/access-policy.js';
 import { AppException } from '../common/app-exception.js';
+import { CUSTOMER_ROUTE, setCustomerPrincipal } from '../customer-auth/customer-principal.js';
+import { CustomerPrincipalLoader } from '../customer-auth/customer-principal.loader.js';
 import {
   ALLOW_PENDING_PASSWORD_CHANGE,
   IS_PUBLIC,
@@ -24,6 +26,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly tokens: TokenService,
     private readonly principals: PrincipalLoader,
+    private readonly customers: CustomerPrincipalLoader,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -38,6 +41,17 @@ export class AuthGuard implements CanActivate {
     if (!match?.[1]) {
       throw AppException.unauthenticated();
     }
+
+    if (this.reflector.getAllAndOverride<boolean>(CUSTOMER_ROUTE, targets)) {
+      const customerClaims = await this.tokens.verifyCustomerAccessToken(match[1]);
+      const customer = customerClaims ? await this.customers.load(customerClaims) : null;
+      if (!customer) {
+        throw AppException.unauthenticated('Session expired or invalid');
+      }
+      setCustomerPrincipal(request, customer);
+      return true;
+    }
+
     const claims = await this.tokens.verifyAccessToken(match[1]);
     const principal = claims ? await this.principals.load(claims) : null;
     if (!principal) {

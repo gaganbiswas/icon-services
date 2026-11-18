@@ -15,6 +15,7 @@ import { PasswordSchema } from '@icon/contracts';
 import { createPrismaClient } from '../client.js';
 import { ARGON2_OPTIONS } from '../password-hashing.js';
 import { ensurePermissions, ensureSystemRoles } from './rbac.js';
+import { ensureAssetCategories } from './reference-data.js';
 
 const rootEnv = path.resolve(import.meta.dirname, '../../../../.env');
 if (existsSync(rootEnv)) {
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
         update: {},
       });
       await ensureSystemRoles(tx, organization.id);
+      await ensureAssetCategories(tx, organization.id);
       const superAdmin = await tx.role.findUniqueOrThrow({
         where: { organizationId_code: { organizationId: organization.id, code: 'SUPER_ADMIN' } },
       });

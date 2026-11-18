@@ -10,6 +10,7 @@ import {
   ARGON2_OPTIONS,
   type PrismaClient,
   createPrismaClient,
+  ensureAssetCategories,
   ensurePermissions,
   ensureSystemRoles,
 } from '@icon/database';
@@ -18,9 +19,10 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApp } from '../../src/bootstrap/configure-app.js';
 import { type Env, parseEnv } from '../../src/config/env.js';
-import { testDatabaseUrl } from './test-database.js';
+import { TEST_BUCKET, testDatabaseUrl } from './test-database.js';
 
 export const ORIGIN = 'http://localhost:5173';
+export { TEST_BUCKET } from './test-database.js';
 export const PASSWORD = 'correct-horse-battery-staple';
 
 export interface TestApp {
@@ -44,6 +46,8 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
     AUTH_RATE_LIMIT_PER_MINUTE: '10000',
     AUDIT_STORE_CLIENT_METADATA: 'true',
     API_DOCS_ENABLED: 'false',
+    S3_BUCKET: TEST_BUCKET,
+    OTP_PEPPER: randomBytes(48).toString('base64url'),
     ...overrides,
   });
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(env)] }).compile();
@@ -78,6 +82,7 @@ export interface OrgFixture {
   readonly code: string;
   readonly branches: Record<string, string>;
   readonly roles: Record<string, string>;
+  readonly categories: Record<string, string>;
 }
 
 export async function createOrg(
@@ -95,12 +100,15 @@ export async function createOrg(
       branches[branchCode] = branch.id;
     }
     await ensureSystemRoles(tx, org.id);
+    await ensureAssetCategories(tx, org.id);
     const roles = await tx.role.findMany({ where: { organizationId: org.id } });
+    const categories = await tx.assetCategory.findMany({ where: { organizationId: org.id } });
     return {
       id: org.id,
       code,
       branches,
       roles: Object.fromEntries(roles.map((role) => [role.code, role.id])),
+      categories: Object.fromEntries(categories.map((c) => [c.code, c.id])),
     };
   });
 }
@@ -188,3 +196,16 @@ export async function login(t: TestApp, email: string, password = PASSWORD): Pro
 }
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+/** Smallest valid PNG (1×1). */
+export const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+let keyCounter = 0;
+/** Unique, valid Idempotency-Key. */
+export function newKey(): string {
+  keyCounter += 1;
+  return `test-key-${Date.now()}-${keyCounter}`;
+}

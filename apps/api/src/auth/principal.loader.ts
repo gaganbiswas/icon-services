@@ -17,6 +17,7 @@ export class PrincipalLoader {
       where: {
         id: claims.sessionId,
         userId: claims.userId,
+        subjectType: 'STAFF',
         revokedAt: null,
         expiresAt: { gt: now },
         user: {
@@ -47,10 +48,10 @@ export class PrincipalLoader {
         },
       },
     });
-    if (!session) {
+    const user = session?.user;
+    if (!session || !user) {
       return null;
     }
-    const { user } = session;
     const permissions = new Set<PermissionCode>();
     for (const userRole of user.roles) {
       for (const { permission } of userRole.role.permissions) {

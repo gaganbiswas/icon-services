@@ -14,6 +14,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1171.0",
+    "@aws-sdk/s3-request-presigner": "3.1171.0",
     "@icon/contracts": "workspace:*",
     "@icon/database": "workspace:*",
     "@nestjs/common": "12.5.1",
@@ -23,9 +25,11 @@
     "@nestjs/throttler": "6.8.0",
     "@node-rs/argon2": "2.2.2",
     "cookie-parser": "1.4.7",
+    "file-type": "22.3.0",
     "helmet": "8.3.0",
     "ioredis": "6.0.0",
     "jose": "6.2.17",
+    "playwright-core": "1.65.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.6.7"
@@ -37,6 +41,7 @@
     "@swc/core": "1.16.22",
     "@types/cookie-parser": "1.4.10",
     "@types/express": "5.0.6",
+    "@types/multer": "2.3.0",
     "@types/node": "24.19.2",
     "@types/supertest": "7.2.1",
     "eslint": "9.39.5",

@@ -23,6 +23,9 @@ export function testDatabaseUrl(): string {
   return url;
 }
 
+/** Dedicated bucket for integration tests. */
+export const TEST_BUCKET = 'icon-test';
+
 export const paths = {
   repoRoot,
   databasePackage: path.join(repoRoot, 'packages/database'),

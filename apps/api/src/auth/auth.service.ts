@@ -208,6 +208,10 @@ export class AuthService {
       }
       const { session } = token;
       const { user } = session;
+      // Customer refresh tokens are never accepted by the staff endpoint (and vice versa).
+      if (!user) {
+        return { kind: 'invalid' as const };
+      }
 
       // Atomically claim the token; a second use (replay or race) gets count 0.
       const claimed =
@@ -283,13 +287,14 @@ export class AuthService {
           },
         },
       });
-      if (!token || token.session.revokedAt !== null) {
+      const sessionUser = token?.session.user;
+      if (!token || !sessionUser || token.session.revokedAt !== null) {
         return;
       }
       await this.revokeSessions(tx, { sessionId: token.session.id }, 'LOGOUT');
       await this.audit.record(tx, {
-        organizationId: token.session.user.organizationId,
-        actorUserId: token.session.user.id,
+        organizationId: sessionUser.organizationId,
+        actorUserId: sessionUser.id,
         action: 'auth.logout',
         entityType: 'auth_session',
         entityId: token.session.id,
@@ -495,6 +500,7 @@ export class AuthService {
     const sessionExpiresAt = new Date(Date.now() + this.env.SESSION_ABSOLUTE_TTL_DAYS * DAY_MS);
     const session = await tx.authSession.create({
       data: {
+        subjectType: 'STAFF',
         userId,
         expiresAt: sessionExpiresAt,
         ipAddress: storeClient ? context.ipAddress : null,

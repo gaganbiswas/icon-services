@@ -6,6 +6,10 @@ const valid = {
   DATABASE_URL: 'postgresql://user:secret-password@localhost:5433/db',
   REDIS_URL: 'redis://localhost:6380',
   JWT_ACCESS_SECRET: 'x'.repeat(32),
+  S3_ACCESS_KEY_ID: 'k',
+  S3_SECRET_ACCESS_KEY: 's',
+  S3_BUCKET: 'icon-dev',
+  OTP_PEPPER: 'p'.repeat(32),
 };
 
 describe('parseEnv', () => {
@@ -82,6 +86,12 @@ describe('auth settings', () => {
 
   it('requires a long JWT secret', () => {
     expect(() => parseEnv({ ...valid, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
+  });
+
+  it('refuses the mock OTP provider in production', () => {
+    expect(() =>
+      parseEnv({ ...valid, NODE_ENV: 'production', AUTH_COOKIE_SECURE: 'true' }),
+    ).toThrow(/OTP_PROVIDER/);
   });
 
   it('refuses insecure cookies in production', () => {

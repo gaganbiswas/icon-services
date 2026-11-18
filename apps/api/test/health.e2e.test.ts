@@ -12,6 +12,7 @@ import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap/configure-app.js';
 import { DatabaseHealthIndicator } from '../src/health/database.health.js';
 import { RedisHealthIndicator } from '../src/health/redis.health.js';
+import { StorageHealthIndicator } from '../src/health/storage.health.js';
 import { testEnv } from './test-env.js';
 
 /** Controllable stand-in for a real dependency check. */
@@ -28,6 +29,7 @@ describe('Health endpoints (HTTP, mocked dependencies)', () => {
   const server = (): Server => app.getHttpServer() as Server;
   const database = new FakeIndicator('database');
   const redis = new FakeIndicator('redis');
+  const storage = new FakeIndicator('storage');
 
   beforeAll(async () => {
     const env = testEnv({ API_DOCS_ENABLED: 'true' });
@@ -36,6 +38,8 @@ describe('Health endpoints (HTTP, mocked dependencies)', () => {
       .useValue(database)
       .overrideProvider(RedisHealthIndicator)
       .useValue(redis)
+      .overrideProvider(StorageHealthIndicator)
+      .useValue(storage)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app, env);
@@ -60,14 +64,17 @@ describe('Health endpoints (HTTP, mocked dependencies)', () => {
     const response = await request(server()).get('/api/v1/health/ready').expect(200);
     expect(ReadinessResponseSchema.parse(response.body)).toEqual({
       status: 'ok',
-      checks: { database: 'up', redis: 'up' },
+      checks: { database: 'up', redis: 'up', storage: 'up' },
     });
   });
 
   it('GET /api/v1/health/ready returns 503 when a dependency is down', async () => {
     redis.healthy = false;
     const response = await request(server()).get('/api/v1/health/ready').expect(503);
-    expect(response.body).toEqual({ status: 'error', checks: { database: 'up', redis: 'down' } });
+    expect(response.body).toEqual({
+      status: 'error',
+      checks: { database: 'up', redis: 'down', storage: 'up' },
+    });
   });
 
   it('sends security headers and hides the framework', async () => {

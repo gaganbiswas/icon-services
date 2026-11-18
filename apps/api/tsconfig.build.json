@@ -2,7 +2,8 @@
   "extends": "@icon/config/tsconfig/nestjs.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "types": ["node", "multer"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]
