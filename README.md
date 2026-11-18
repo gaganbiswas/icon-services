@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 2 complete — database foundation, staff authentication, RBAC with branch scoping, audit log.
-> Customer, job and billing features start in Phase 3.
+> **Status:** Phase 3 complete — customers, devices, job intake with printable receipts (staff web) and
+> customer sign-in / complaint submission (Android app). Job lifecycle starts in Phase 4.
 
 ## Repository layout
 
@@ -35,6 +35,7 @@ Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 cp .env.example .env          # local-only placeholders — set JWT_ACCESS_SECRET and SEED_ADMIN_PASSWORD
 bun install
 bun run services:up           # PostgreSQL :5433, Redis :6380, S3 :8333 (localhost only)
+node node_modules/playwright-core/cli.js install --only-shell chromium   # PDF receipts (one-time)
 bun run build
 bun run db:migrate            # apply Prisma migrations to the dev database
 bun run db:seed:dev           # dev-only: placeholder org/branch + Super Admin from SEED_ADMIN_*
@@ -44,6 +45,10 @@ bun run dev                   # API :4000, admin :5173, web :3000, Expo (Metro)
 Sign in to the admin panel at http://localhost:5173 with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 New staff are created via `POST /api/v1/users`; the response contains a one-time set-up token, used at
 `http://localhost:5173/set-password#token=<token>` (the token stays in the URL fragment, never sent to servers).
+
+Android app: copy `apps/mobile/.env.example` to `apps/mobile/.env` and run `bunx turbo run dev --filter=@icon/mobile`.
+Customer sign-in uses a **development-only mock OTP provider**: the 6-digit code is printed in the API console.
+A real SMS/WhatsApp OTP provider is still an owner decision (questions E42/F45).
 
 Integration tests use a separate database (`TEST_DATABASE_URL`, name must end in `_test`), created
 automatically for new Docker volumes. For an existing volume:

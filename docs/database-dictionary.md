@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 2 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 3 (2026-11-18).
 
 ## Conventions
 
@@ -66,6 +66,26 @@ One-time tokens: `purpose ∈ {INITIAL_SETUP, ADMIN_RESET}`, `expires_at`, `used
 Trigger `audit_logs_no_update_or_delete` raises on `UPDATE`/`DELETE`. Production DB role must not have `TRUNCATE`.
 Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(actor_user_id, created_at DESC)`.
 
+## Tables (Phase 3, ADR 0012)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `business_settings` | Per-organization JSON settings, validated by Zod (`packages/contracts/src/settings.ts`); code defaults apply when absent. Unique `(organization_id, key)` |
+| `number_sequences` | Counters for job numbers / customer codes. Incremented by one atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING` inside the business transaction. Unique `(organization_id, branch_scope, document_type, period_key)`; `branch_scope = '-'` for organization-wide |
+| `idempotency_keys` | Unique `(actor_key, operation, key)`; stores request SHA-256 and the response for replay; 7-day expiry |
+| `customers` | Customer code unique per org; `phone_e164` CHECK `^\+[1-9]\d{6,14}$` plus display value; trigram index on `lower(name)`; status ACTIVE/ANONYMIZED; `source` INTAKE_STAFF/CUSTOMER_APP/WEB_PORTAL; `version` |
+| `customer_addresses` | One `BILLING` and one `SERVICE` row max per customer |
+| `customer_consents` | Append-only grants; withdrawal sets `withdrawn_at`. Partial unique index: one active row per (customer, channel, purpose). Policy version from settings |
+| `asset_categories` | Per-org categories (seeded DESKTOP, LAPTOP, PRINTER, MONITOR, OTHER) |
+| `assets` | Composite FKs to customer and category in the same org; `serial_normalized` index (not unique — duplicates warned); `attributes` JSONB object validated per category |
+| `files` | Random `storage_key`; MIME sniffed from content; SHA-256; classification PERSONAL/INTERNAL/DOCUMENT; single uploader (staff or customer) |
+| `service_jobs` | Unique `(organization_id, job_number)`; composite FKs to branch/customer/asset in same org; status enum incl. `AWAITING_DEVICE`; CHECKs: on-site requires address, received jobs have `received_at`, exactly one creator (staff or customer) |
+| `job_status_history` | Append-only (trigger rejects UPDATE/DELETE) |
+| `job_attachments` | Job ↔ file with category and visibility (INTERNAL/CUSTOMER) |
+| `documents` | Generated documents with immutable `snapshot` JSON; unique `(entity_type, entity_id, document_type, layout, version)`; trigger rejects UPDATE/DELETE |
+| `customer_otp_challenges` | HMAC-SHA256 code hash, attempts, expiry, consumed time |
+| `auth_sessions` (changed) | `subject_type` STAFF/CUSTOMER; exactly one of `user_id` / `customer_id` (CHECK) |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -78,5 +98,6 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase3_customers_assets_intake` | Phase 3 tables, `pg_trgm`, consent partial unique index, append-only status-history and documents triggers |
 
 Integration tests use a separate database whose name must end in `_test` (`TEST_DATABASE_URL`); they truncate it.

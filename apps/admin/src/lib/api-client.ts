@@ -99,8 +99,39 @@ export class ApiClient {
     });
   }
 
+  get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined && value !== '') params.set(key, String(value));
+    }
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
+    return this.authorized<T>(`${path}${suffix}`, { method: 'GET' });
+  }
+
+  post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    return this.authorized<T>(path, { method: 'POST', body, ...(headers ? { headers } : {}) });
+  }
+
+  patch<T>(path: string, body: unknown): Promise<T> {
+    return this.authorized<T>(path, { method: 'PATCH', body });
+  }
+
+  put<T>(path: string, body: unknown): Promise<T> {
+    return this.authorized<T>(path, { method: 'PUT', body });
+  }
+
+  /** Multipart upload of a single file in the "file" field. */
+  upload<T>(path: string, file: Blob, fileName: string): Promise<T> {
+    const form = new FormData();
+    form.append('file', file, fileName);
+    return this.authorized<T>(path, { method: 'POST', body: form });
+  }
+
   /** Authenticated call; on an expired access token refreshes once and retries. */
-  async authorized<T>(path: string, init: { method: string; body?: unknown }): Promise<T> {
+  async authorized<T>(
+    path: string,
+    init: { method: string; body?: unknown; headers?: Record<string, string> },
+  ): Promise<T> {
     try {
       return await this.send<T>(path, { ...init, auth: true });
     } catch (error) {
@@ -117,10 +148,18 @@ export class ApiClient {
 
   private async send<T>(
     path: string,
-    init: { method: string; body?: unknown; auth?: boolean; csrf?: boolean },
+    init: {
+      method: string;
+      body?: unknown;
+      auth?: boolean;
+      csrf?: boolean;
+      headers?: Record<string, string>;
+    },
   ): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (init.body !== undefined) headers['Content-Type'] = 'application/json';
+    const isForm = init.body instanceof FormData;
+    const headers: Record<string, string> = { Accept: 'application/json', ...init.headers };
+    // Multipart bodies set their own boundary header.
+    if (init.body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
     if (init.csrf) headers[CSRF_HEADER] = '1';
     if (init.auth && this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
 
@@ -130,7 +169,9 @@ export class ApiClient {
         method: init.method,
         headers,
         credentials: 'include',
-        ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+        ...(init.body !== undefined
+          ? { body: isForm ? (init.body as FormData) : JSON.stringify(init.body) }
+          : {}),
       });
     } catch {
       throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection.');

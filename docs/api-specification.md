@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 2 (2026-11-18).
+Updated: Phase 3 (2026-11-18).
 
 ## Conventions
 
@@ -43,6 +43,44 @@ Updated: Phase 2 (2026-11-18).
 | PATCH | `/roles/:id` | `roles.manage` | `{version, reason, name?, description?, permissions?}`; Super Admin permissions locked |
 | GET | `/branches`, `/branches/:id` | `branches.read` | Branch-scoped |
 | GET | `/audit-logs` | `audit.read` | Filters: `entityType`, `entityId`, `actorUserId`, `action`; branch-scoped |
+
+## Phase 3 endpoints
+
+`POST /jobs` and `POST /customer/jobs` require an **`Idempotency-Key`** header (8–100 of `A-Z a-z 0-9 _ -`).
+A retry with the same key and body returns the original response (`Idempotent-Replayed: true`); the same key with a
+different body → 422 `IDEMPOTENCY_KEY_REUSED`; a concurrent duplicate still in progress → 409.
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/settings` | `settings.read` | Effective settings (defaults where unset) |
+| PUT | `/settings/:key` | `settings.manage` | `{value, reason}`; validated; audited |
+| GET | `/customers?q=` | `customers.read` | Search name / phone / e-mail / customer code |
+| POST | `/customers` | `customers.write` | Phone normalized to E.164 (country code required until a default region is set) |
+| GET / PATCH | `/customers/:id` | read / write | PATCH needs `version` |
+| PUT | `/customers/:id/consents` | `customers.write` | `{channel, purpose, granted}` |
+| GET | `/asset-categories` | `assets.read` | |
+| GET | `/customers/:id/assets` | `assets.read` | |
+| POST | `/assets` | `assets.write` | Returns `duplicateSerialWarning` |
+| POST | `/files` | `jobs.create` | multipart `file`, ≤ 10 MB, JPEG/PNG/WebP/HEIC/PDF by content |
+| GET | `/jobs?q=&status=&branchId=&customerId=` | `jobs.read` | Branch-scoped; q matches job number, customer name/phone, serial |
+| POST | `/jobs` | `jobs.create` | Idempotent intake; status `RECEIVED` |
+| GET | `/jobs/:id` | `jobs.read` | |
+| POST | `/jobs/:id/receipt?layout=A4\|THERMAL_80` | `jobs.read` | Signed URL (5 min) to the stored PDF; first call renders, later calls reuse |
+| GET | `/jobs/:id/attachments/:fileId/url` | `jobs.read` | Signed URL |
+
+### Customer API (customer access token; identity from token only)
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/customer/auth/otp/request` | `{organizationCode, phone}` → always `{sent: true}`; rate-limited; resend interval and hourly cap |
+| POST | `/customer/auth/otp/verify` | `{organizationCode, phone, code, fullName?}` → tokens; `PROFILE_REQUIRED` for new numbers; `ACCOUNT_AMBIGUOUS` if several customers share the number |
+| POST | `/customer/auth/refresh`, `/customer/auth/logout` | `{refreshToken}` in body; rotation with reuse detection |
+| GET | `/customer/me`, `/customer/branches`, `/customer/asset-categories`, `/customer/assets` | Own data only |
+| GET | `/customer/jobs`, `/customer/jobs/:id` | Customer-safe view (customer status labels, no internal fields) |
+| POST | `/customer/jobs` | Idempotent complaint → job `AWAITING_DEVICE`; warranty claim never trusted (`WARRANTY_UNVERIFIED`) |
+| POST | `/customer/jobs/:id/receipt` | Own jobs only |
+| POST | `/customer/files` | Customer photo upload |
+| PUT | `/customer/consents` | Own consent |
 
 ## Escalation rules (enforced server-side)
 

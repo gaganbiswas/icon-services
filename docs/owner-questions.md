@@ -62,7 +62,7 @@ confirmation from the business's accountant / tax professional.
 ## D. Operations and policies
 
 28. Number of branches now, and expected within 12 months? Branch codes/names. _answer_ (Development seed uses one placeholder branch `DEV-01`.)
-29. Job number format (e.g. `BR1-2026-000123`)? Reset yearly? _answer_
+29. Job number format (e.g. `BR1-2026-000123`)? Reset yearly? _answer_ (PLACEHOLDER in use: `{BRANCH}-{YYYY}-{SEQ:6}`, yearly — changeable in settings.)
 30. Receipt and delivery challan number formats. _answer_
 31. Staff list by role for initial setup (names only; no passwords). _answer_
 32. Warranty rules: who verifies, what proof is accepted, what is excluded
@@ -85,7 +85,7 @@ confirmation from the business's accountant / tax professional.
 41. Languages for staff UI, customer app, documents, and messages
     (English only? plus Hindi/Bengali/other?). _answer_
 42. How will customers sign in to the Android app (mobile OTP, email+password,
-    both)? _answer_
+    both)? _answer_ (Built: mobile OTP through a provider adapter; only a development mock exists.)
 43. Customer app distribution: Google Play Store (needs developer account) or
     direct APK? _answer_
 44. Can customers raise complaints via the app without visiting the centre

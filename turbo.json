@@ -25,6 +25,9 @@
         "REDIS_URL",
         "NODE_ENV",
         "JWT_ACCESS_SECRET",
+        "OTP_PEPPER",
+        "S3_*",
+        "PDF_CHROMIUM_EXECUTABLE",
         "CI"
       ]
     },
