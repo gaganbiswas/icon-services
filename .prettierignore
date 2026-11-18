@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+.expo/
+.turbo/
+coverage/
+bun.lock
+**/routeTree.gen.ts
+packages/database/src/generated/
+# Hand-written documentation is not auto-formatted (preserves CLAUDE.md layout).
+*.md

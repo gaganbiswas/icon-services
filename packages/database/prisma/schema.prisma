@@ -1,0 +1,12 @@
+// ICON INFOSYS SERVICE MANAGEMENT — Prisma schema.
+// Phase 1: generator and datasource only. Models are added in Phase 2
+// (CLAUDE.md §6, docs/database-dictionary.md). Money: see ADR 0005.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

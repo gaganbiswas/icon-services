@@ -1,0 +1,7 @@
+{
+  "extends": "@icon/config/tsconfig/react-vite.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src", "vite.config.ts", "eslint.config.js"]
+}

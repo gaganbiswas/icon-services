@@ -1,0 +1,7 @@
+# Bun configuration (ADR 0001).
+[install]
+# Hoisted node_modules so Expo/Metro, Next.js and Vite share one copy of
+# React / React Native. Do not switch to "isolated" without re-testing mobile.
+linker = "hoisted"
+# Exact versions only; upgrades are deliberate.
+exact = true

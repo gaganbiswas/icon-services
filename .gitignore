@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+.expo/
+web-build/
+android/
+ios/
+*.tsbuildinfo
+next-env.d.ts
+
+# Turborepo
+.turbo/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Environment / secrets — never commit (CLAUDE.md §8)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.keystore
+*.jks
+google-services.json
+
+# Generated Prisma client
+packages/database/src/generated/
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json

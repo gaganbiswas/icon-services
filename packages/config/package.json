@@ -1,0 +1,26 @@
+{
+  "name": "@icon/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared TypeScript and ESLint configuration.",
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/node-library.json": "./tsconfig/node-library.json",
+    "./tsconfig/nestjs.json": "./tsconfig/nestjs.json",
+    "./tsconfig/react-vite.json": "./tsconfig/react-vite.json",
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/react": "./eslint/react.js"
+  },
+  "dependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.14.0",
+    "typescript-eslint": "8.73.0"
+  },
+  "peerDependencies": {
+    "eslint": "9.39.5",
+    "typescript": "6.0.3"
+  }
+}

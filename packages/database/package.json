@@ -1,0 +1,21 @@
+{
+  "name": "@icon/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prisma schema, migrations and seed. Imported only by apps/api.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "prisma format --check && eslint .",
+    "test": "prisma validate",
+    "db:validate": "prisma validate",
+    "db:format": "prisma format"
+  },
+  "devDependencies": {
+    "@icon/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "prisma": "7.10.1",
+    "typescript": "6.0.3"
+  }
+}

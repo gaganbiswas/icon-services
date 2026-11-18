@@ -1,0 +1,36 @@
+{
+  "name": "@icon/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ICON INFOSYS SERVICE MANAGEMENT — staff admin panel (React + TanStack Router SPA, ADR 0008).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@icon/contracts": "workspace:*",
+    "@tanstack/react-router": "1.170.46",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@icon/config": "workspace:*",
+    "@tanstack/router-plugin": "1.169.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "eslint": "9.39.5",
+    "jsdom": "31.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
+  }
+}
