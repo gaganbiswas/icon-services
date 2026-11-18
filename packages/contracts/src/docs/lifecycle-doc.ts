@@ -2,7 +2,8 @@ import { CUSTOMER_STATUS_BY_JOB_STATUS, CUSTOMER_STATUS_LABELS, JOB_STATUSES } f
 import { TRANSITIONS } from '../lifecycle.js';
 
 const GUARD_TEXT: Record<string, string> = {
-  APPROVED_ESTIMATE: 'approved estimate required (Phase 5)',
+  APPROVED_ESTIMATE: 'current estimate approved by the customer',
+  REJECTED_ESTIMATE: 'current estimate rejected by the customer (return unrepaired)',
   COMPLETION_RECORD: 'repair summary + passed QC via completion action',
   DELIVERY_WORKFLOW: 'delivery hand-over workflow only (Phase 9)',
   RECEIVE_ACTION: '“Receive device” action only',

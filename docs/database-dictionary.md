@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 4 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 5 (2026-11-18).
 
 ## Conventions
 
@@ -97,6 +97,15 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `notification_outbox` | Notification intent written in the business transaction; unique `idempotency_key`; status PENDING/PROCESSING/COMPLETED/FAILED/DEAD/SKIPPED; `attempts`, `next_attempt_at`, `locked_until` lease; `branch_id` for scoping |
 | `notification_deliveries` | Per channel/attempt result: ACCEPTED (provider took it — not delivery), FAILED, SKIPPED_NO_CONSENT, SKIPPED_NO_ADDRESS; DELIVERED/READ only from provider callbacks (Phase 10). Unique (outbox, channel, attempt) |
 
+## Tables (Phase 5, ADR 0014)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `estimates` | Versioned per job (unique `(job_id, version)`); partial unique index: one DRAFT-or-SENT per job; money `NUMERIC(19,4)`; CHECKs `total = subtotal − discount_total = customer_payable + covered`, sent ⇒ `sent_at` + `valid_until`, decided ⇒ `decided_at`; **trigger: immutable after DRAFT** (only status / decision time / row version change, SENT → APPROVED/REJECTED/SUPERSEDED/WITHDRAWN), never deleted. `tax_treatment = NOT_CONFIGURED` |
+| `estimate_lines` | Position, type, description, SKU snapshot, quantity, unit, unit price, discount, coverage (CUSTOMER_PAY/WARRANTY/GOODWILL), `line_total = quantity × unit_price − discount` (CHECK); trigger allows changes only while the estimate is DRAFT |
+| `estimate_decisions` | One per estimate; decision, method (CUSTOMER_APP/APPROVAL_LINK), customer, estimate version, approved amount snapshot, terms accepted + SHA-256 of terms, comment, optional IP/user agent; append-only |
+| `estimate_approval_links` | Token SHA-256 (unique), expiry, used / revoked time; single-use |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -109,6 +118,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase5_estimates` | Estimates, lines, decisions, links; immutability triggers |
 | `…_phase4_lifecycle_work_notifications`, `…_phase4_outbox_branch` | Phase 4 tables, constraints and append-only triggers |
 | `…_phase3_customers_assets_intake` | Phase 3 tables, `pg_trgm`, consent partial unique index, append-only status-history and documents triggers |
 

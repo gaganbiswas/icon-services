@@ -68,9 +68,10 @@ confirmation from the business's accountant / tax professional.
 32. Warranty rules: who verifies, what proof is accepted, what is excluded
     (physical/liquid damage etc.)? _answer_
 33. Is a diagnostic/inspection fee charged? Can it be charged without
-    estimate approval? _answer_
+    estimate approval? _answer_ (Default in use: no diagnostic fee; no repair without approval — ADR 0014.)
 34. Estimate validity period, and what happens on rejection (return device
-    unrepaired, charge diagnostic fee?). _answer_
+    unrepaired, charge diagnostic fee?). _answer_ (Default in use: 14 days; rejection → return unrepaired with reason.)
+34a. May staff record an estimate approval given by phone or in person on the customer's behalf? (Not built — CLAUDE.md lists only app/portal/link.) _answer_
 35. Is delivery allowed with balance due? Which roles may approve? _answer_
 36. Is partial delivery (e.g. returning some accessories/items) needed? _answer_
 37. Unclaimed-device policy (days before reminders/storage charges)? _answer_

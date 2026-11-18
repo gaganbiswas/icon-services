@@ -9,6 +9,7 @@
 // Phase 2: tenancy, identity, RBAC, sessions and audit.
 // Phase 3: customers, assets, files, intake, numbering, settings, documents.
 // Phase 4: lifecycle, assignments, diagnoses, work logs, notification outbox.
+// Phase 5: estimates, lines, customer decisions, approval links.
 
 generator client {
   provider            = "prisma-client"
@@ -705,6 +706,7 @@ model ServiceJob {
   assignments   JobAssignment[]
   diagnoses     Diagnosis[]
   workLogs      WorkLog[]
+  estimates     Estimate[]
 
   @@unique([organizationId, jobNumber])
   @@unique([organizationId, id])
@@ -958,4 +960,144 @@ model NotificationDelivery {
   @@unique([outboxId, channel, attempt])
   @@index([outboxId])
   @@map("notification_deliveries")
+}
+
+// ---------------------------------------------------------------------------
+// Estimates (Phase 5, ADR 0014). Money: NUMERIC(19,4) (ADR 0005).
+// ---------------------------------------------------------------------------
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  SUPERSEDED
+  WITHDRAWN
+
+  @@map("estimate_status")
+}
+
+enum EstimateLineType {
+  LABOUR
+  PART
+  SERVICE_FEE
+  OTHER
+
+  @@map("estimate_line_type")
+}
+
+enum Coverage {
+  CUSTOMER_PAY
+  WARRANTY
+  GOODWILL
+
+  @@map("coverage")
+}
+
+/// Immutable once sent: a trigger allows only status/decision fields to change.
+model Estimate {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  branchId        String         @map("branch_id") @db.Uuid
+  jobId           String         @map("job_id") @db.Uuid
+  version         Int
+  status          EstimateStatus @default(DRAFT)
+  currency        String         @db.Char(3)
+  subtotal        Decimal        @db.Decimal(19, 4)
+  discountTotal   Decimal        @map("discount_total") @db.Decimal(19, 4)
+  total           Decimal        @db.Decimal(19, 4)
+  customerPayable Decimal        @map("customer_payable") @db.Decimal(19, 4)
+  covered         Decimal        @db.Decimal(19, 4)
+  /// NOT_CONFIGURED until approved tax configuration exists (Phase 7).
+  taxTreatment    String         @default("NOT_CONFIGURED") @map("tax_treatment") @db.VarChar(30)
+  validUntil      DateTime?      @map("valid_until") @db.Date
+  /// Snapshot of the terms at send time.
+  terms           String         @db.VarChar(4000)
+  notes           String?        @db.VarChar(2000)
+  preparedById    String         @map("prepared_by_id") @db.Uuid
+  sentAt          DateTime?      @map("sent_at") @db.Timestamptz(3)
+  sentById        String?        @map("sent_by_id") @db.Uuid
+  decidedAt       DateTime?      @map("decided_at") @db.Timestamptz(3)
+  rowVersion      Int            @default(1) @map("row_version")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  job      ServiceJob             @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  lines    EstimateLine[]
+  decision EstimateDecision?
+  links    EstimateApprovalLink[]
+
+  @@unique([jobId, version])
+  @@index([organizationId, status])
+  @@map("estimates")
+}
+
+model EstimateLine {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  estimateId   String           @map("estimate_id") @db.Uuid
+  position     Int
+  lineType     EstimateLineType @map("line_type")
+  description  String           @db.VarChar(500)
+  /// Catalogue SKU snapshot (inventory arrives in Phase 6).
+  sku          String?          @db.VarChar(60)
+  quantity     Decimal          @db.Decimal(19, 4)
+  unit         String           @db.VarChar(20)
+  unitPrice    Decimal          @map("unit_price") @db.Decimal(19, 4)
+  discount     Decimal          @db.Decimal(19, 4)
+  coverage     Coverage
+  lineTotal    Decimal          @map("line_total") @db.Decimal(19, 4)
+  taxTreatment String           @default("NOT_CONFIGURED") @map("tax_treatment") @db.VarChar(30)
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+
+  @@unique([estimateId, position])
+  @@map("estimate_lines")
+}
+
+enum DecisionMethod {
+  CUSTOMER_APP
+  APPROVAL_LINK
+
+  @@map("decision_method")
+}
+
+/// One decision per estimate; append-only.
+model EstimateDecision {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  estimateId      String         @unique @map("estimate_id") @db.Uuid
+  decision        EstimateStatus
+  method          DecisionMethod
+  customerId      String         @map("customer_id") @db.Uuid
+  estimateVersion Int            @map("estimate_version")
+  /// Amount the customer approved/rejected (snapshot).
+  customerPayable Decimal        @map("customer_payable") @db.Decimal(19, 4)
+  termsAccepted   Boolean        @map("terms_accepted")
+  /// SHA-256 of the terms text shown.
+  termsHash       String         @map("terms_hash") @db.Char(64)
+  comment         String?        @db.VarChar(1000)
+  /// Stored only when AUDIT_STORE_CLIENT_METADATA=true.
+  ipAddress       String?        @map("ip_address") @db.VarChar(45)
+  userAgent       String?        @map("user_agent") @db.VarChar(500)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+
+  @@map("estimate_decisions")
+}
+
+/// Secure, expiring, single-use approval links (token stored as SHA-256).
+model EstimateApprovalLink {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  estimateId  String    @map("estimate_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash") @db.Char(64)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(3)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+
+  @@index([estimateId])
+  @@map("estimate_approval_links")
 }

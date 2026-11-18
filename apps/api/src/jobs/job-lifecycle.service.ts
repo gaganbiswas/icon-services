@@ -46,6 +46,10 @@ const TRANSITION_ERRORS: Record<TransitionError, { status: HttpStatus; message: 
     status: HttpStatus.CONFLICT,
     message: 'Repair cannot start until the customer has approved an estimate',
   },
+  ESTIMATE_REJECTION_REQUIRED: {
+    status: HttpStatus.CONFLICT,
+    message: 'A device can be returned unrepaired only after the customer rejects the estimate',
+  },
   COMPLETION_REQUIRED: {
     status: HttpStatus.CONFLICT,
     message: 'Record the repair summary and quality check to complete the repair',
@@ -149,15 +153,23 @@ export class JobLifecycleService {
     return hold?.fromStatus ?? null;
   }
 
-  /** Phase 5 replaces this with a lookup of an approved, current estimate. */
-  private hasApprovedEstimate(_db: Tx | PrismaClient, _jobId: string): Promise<boolean> {
-    return Promise.resolve(false);
+  /** Status of the job's current (highest version, non-draft) estimate (ADR 0014). */
+  private async currentEstimateStatus(
+    db: Tx | PrismaClient,
+    jobId: string,
+  ): Promise<string | null> {
+    const current = await db.estimate.findFirst({
+      where: { jobId, status: { notIn: ['DRAFT', 'WITHDRAWN'] } },
+      orderBy: { version: 'desc' },
+      select: { status: true },
+    });
+    return current?.status ?? null;
   }
 
   async workspace(principal: Principal, jobId: string): Promise<JobWorkspace> {
     const job = await this.findJob(this.prisma, principal, jobId);
     const canSeeInternal = hasPermission(principal, 'jobs.internal_notes.read');
-    const [assignments, diagnoses, workLogs, completion, canWork, heldFrom, approved] =
+    const [assignments, diagnoses, workLogs, completion, canWork, heldFrom, estimateStatus] =
       await Promise.all([
         this.prisma.jobAssignment.findMany({
           where: { jobId },
@@ -180,7 +192,7 @@ export class JobLifecycleService {
         }),
         this.canWork(this.prisma, principal, jobId),
         this.heldFrom(this.prisma, jobId),
-        this.hasApprovedEstimate(this.prisma, jobId),
+        this.currentEstimateStatus(this.prisma, jobId),
       ]);
     return {
       assignments: assignments.map((a) => ({
@@ -220,7 +232,8 @@ export class JobLifecycleService {
         ? availableTransitions(job.status, {
             permissions: principal.permissions,
             heldFrom,
-            hasApprovedEstimate: approved,
+            hasApprovedEstimate: estimateStatus === 'APPROVED',
+            hasRejectedEstimate: estimateStatus === 'REJECTED',
           })
         : [],
       canWork,
@@ -270,7 +283,8 @@ export class JobLifecycleService {
         permissions: principal.permissions,
         reason: input.reason,
         heldFrom: job.status === 'ON_HOLD' ? await this.heldFrom(tx, jobId) : null,
-        hasApprovedEstimate: await this.hasApprovedEstimate(tx, jobId),
+        hasApprovedEstimate: (await this.currentEstimateStatus(tx, jobId)) === 'APPROVED',
+        hasRejectedEstimate: (await this.currentEstimateStatus(tx, jobId)) === 'REJECTED',
         hasCompletionRecord: job.completedAt !== null,
       });
       if (error) throw transitionError(error);
@@ -605,6 +619,23 @@ export class JobLifecycleService {
     return toJobDetail(
       await tx.serviceJob.findUniqueOrThrow({ where: { id: jobId }, select: JOB_DETAIL_SELECT }),
     );
+  }
+
+  /** Status change inside an existing transaction (used by estimates). Caller has authorized. */
+  async applyStatusInTx(
+    tx: Tx,
+    principal: Principal,
+    jobId: string,
+    to: JobStatus,
+    options: {
+      reason: string | null;
+      customerMessage: string | null;
+      action: string;
+      event?: NotificationEvent;
+    },
+  ): Promise<void> {
+    const job = await this.findJob(tx, principal, jobId);
+    await this.applyStatus(tx, principal, job, to, options);
   }
 
   private async applyStatus(

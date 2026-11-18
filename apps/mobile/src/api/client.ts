@@ -3,6 +3,7 @@ import {
   type Asset,
   type AssetCategory,
   type CustomerComplaintRequest,
+  type CustomerEstimate,
   type CustomerJob,
   type CustomerProfile,
   type CustomerTokenResponse,
@@ -118,6 +119,20 @@ export class CustomerApi {
   jobs = () => this.authorized<CustomerJob[]>('/customer/jobs', { method: 'GET' });
   job = (id: string) =>
     this.authorized<CustomerJob>(`/customer/jobs/${encodeURIComponent(id)}`, { method: 'GET' });
+  estimates = (jobId: string) =>
+    this.authorized<CustomerEstimate[]>(`/customer/jobs/${encodeURIComponent(jobId)}/estimates`, {
+      method: 'GET',
+    });
+  decideEstimate = (
+    id: string,
+    decision: 'APPROVED' | 'REJECTED',
+    termsAccepted: boolean,
+    comment?: string,
+  ) =>
+    this.authorized<CustomerEstimate>(`/customer/estimates/${encodeURIComponent(id)}/decision`, {
+      method: 'POST',
+      body: { decision, termsAccepted, ...(comment ? { comment } : {}) },
+    });
   receipt = (id: string) =>
     this.authorized<DocumentLink>(`/customer/jobs/${encodeURIComponent(id)}/receipt`, {
       method: 'POST',

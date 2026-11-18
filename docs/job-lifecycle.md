@@ -23,9 +23,10 @@ require `jobs.transition`, and — for technicians without `jobs.assign` — an 
 | ESTIMATE_PREPARATION | DIAGNOSIS | required | — | — |
 | ESTIMATE_PREPARATION | ON_HOLD | required | — | — |
 | ESTIMATE_PREPARATION | CANCELLED | required | — | — |
-| AWAITING_CUSTOMER_APPROVAL | REPAIR_IN_PROGRESS | — | — | approved estimate required (Phase 5) |
-| AWAITING_CUSTOMER_APPROVAL | WAITING_FOR_PARTS | — | — | approved estimate required (Phase 5) |
+| AWAITING_CUSTOMER_APPROVAL | REPAIR_IN_PROGRESS | — | — | current estimate approved by the customer |
+| AWAITING_CUSTOMER_APPROVAL | WAITING_FOR_PARTS | — | — | current estimate approved by the customer |
 | AWAITING_CUSTOMER_APPROVAL | ESTIMATE_PREPARATION | required | — | — |
+| AWAITING_CUSTOMER_APPROVAL | READY_FOR_DELIVERY | required | — | current estimate rejected by the customer (return unrepaired) |
 | AWAITING_CUSTOMER_APPROVAL | ON_HOLD | required | — | — |
 | AWAITING_CUSTOMER_APPROVAL | CANCELLED | required | — | — |
 | WAITING_FOR_PARTS | REPAIR_IN_PROGRESS | — | — | — |

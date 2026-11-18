@@ -19,6 +19,8 @@ const TEMPLATES: Record<string, string> = {
   JOB_UPDATE_POSTED: 'job_update_v1',
   REPAIR_COMPLETED: 'repair_completed_v1',
   READY_FOR_DELIVERY: 'ready_for_delivery_v1',
+  ESTIMATE_READY: 'estimate_ready_v1',
+  ESTIMATE_DECISION_RECORDED: 'estimate_decision_v1',
 };
 
 interface ClaimedRow {

@@ -12,6 +12,7 @@ export interface TransitionRule {
   /** Business precondition checked by the API. */
   readonly guard?:
     | 'APPROVED_ESTIMATE'
+    | 'REJECTED_ESTIMATE'
     | 'COMPLETION_RECORD'
     | 'DELIVERY_WORKFLOW'
     | 'RECEIVE_ACTION'
@@ -40,6 +41,8 @@ const BASE_TRANSITIONS: Record<Exclude<JobStatus, 'ON_HOLD'>, readonly Transitio
     { to: 'REPAIR_IN_PROGRESS', guard: 'APPROVED_ESTIMATE' },
     { to: 'WAITING_FOR_PARTS', guard: 'APPROVED_ESTIMATE' },
     { to: 'ESTIMATE_PREPARATION', reasonRequired: true },
+    // "Return unrepaired" after the customer rejects (ADR 0014).
+    { to: 'READY_FOR_DELIVERY', reasonRequired: true, guard: 'REJECTED_ESTIMATE' },
     hold,
     cancel,
   ],
@@ -78,6 +81,7 @@ export type TransitionError =
   | 'REASON_REQUIRED'
   | 'FORBIDDEN'
   | 'ESTIMATE_APPROVAL_REQUIRED'
+  | 'ESTIMATE_REJECTION_REQUIRED'
   | 'COMPLETION_REQUIRED'
   | 'USE_DELIVERY_WORKFLOW'
   | 'USE_RECEIVE_ACTION';
@@ -88,6 +92,7 @@ export interface TransitionContext {
   /** Status before the current hold (ON_HOLD only). */
   readonly heldFrom?: JobStatus | null | undefined;
   readonly hasApprovedEstimate?: boolean;
+  readonly hasRejectedEstimate?: boolean;
   readonly hasCompletionRecord?: boolean;
 }
 
@@ -110,6 +115,8 @@ export function checkTransition(
   if (rule.guard === 'DELIVERY_WORKFLOW') return 'USE_DELIVERY_WORKFLOW';
   if (rule.guard === 'APPROVED_ESTIMATE' && !ctx.hasApprovedEstimate)
     return 'ESTIMATE_APPROVAL_REQUIRED';
+  if (rule.guard === 'REJECTED_ESTIMATE' && !ctx.hasRejectedEstimate)
+    return 'ESTIMATE_REJECTION_REQUIRED';
   if (rule.guard === 'COMPLETION_RECORD' && !ctx.hasCompletionRecord) return 'COMPLETION_REQUIRED';
   return null;
 }

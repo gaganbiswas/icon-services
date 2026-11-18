@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 4 (2026-11-18).
+Updated: Phase 5 (2026-11-18).
 
 ## Conventions
 
@@ -88,6 +88,25 @@ may only change jobs assigned to them (`403 NOT_ASSIGNED`).
 | POST | `/jobs/:id/attachments` | `worklogs.write` | Attach an uploaded file |
 | GET | `/notifications?status=&jobId=` | `notifications.read` | Branch-scoped notification centre |
 | POST | `/notifications/:id/retry` | `notifications.retry` | FAILED/DEAD → PENDING (audited) |
+
+## Phase 5 endpoints (estimates, ADR 0014)
+
+Money values are decimal **strings** with 4 decimals (e.g. `"2300.0000"`); totals are always computed by the server.
+Tax is not calculated (`taxNote`: "Taxes, if applicable, to be confirmed.").
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/estimates/config` | `estimates.read` | `{currency (null until configured), validityDays}` |
+| GET | `/jobs/:jobId/estimates` | `estimates.read` | All versions |
+| POST | `/jobs/:jobId/estimates` | `estimates.write` | New DRAFT; job must be in ESTIMATE_PREPARATION; supersedes a SENT version; `CONFIGURATION_REQUIRED` without currency; assigned technicians only (unless `jobs.assign`) |
+| GET | `/estimates/:id` | `estimates.read` | |
+| PUT | `/estimates/:id` | `estimates.write` | Replace draft lines; `rowVersion`; `ESTIMATE_NOT_EDITABLE` once sent |
+| POST | `/estimates/:id/send` | `estimates.send` | DRAFT → SENT, job → AWAITING_CUSTOMER_APPROVAL, returns single-use approval link token **once** |
+| POST | `/estimates/:id/approval-link` | `estimates.send` | New link (revokes unused ones) |
+| POST | `/public/estimate-links/view` | public, rate-limited | `{token}` → customer view (does not consume) |
+| POST | `/public/estimate-links/decision` | public, rate-limited | `{token, decision, termsAccepted, comment?}` — consumes the link |
+| GET | `/customer/jobs/:id/estimates` | customer | Own, non-draft versions |
+| POST | `/customer/estimates/:id/decision` | customer | `{decision, termsAccepted, comment?}`; errors `ESTIMATE_EXPIRED`, `ESTIMATE_ALREADY_DECIDED` |
 
 ### Customer API (customer access token; identity from token only)
 

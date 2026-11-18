@@ -6,6 +6,7 @@ import { type CustomerApi, errorMessage } from '../api/client';
 import { Body, Button, ErrorText, Screen, Title } from '../components/ui';
 import { useSession } from '../session';
 import { useLoad } from '../use-load';
+import { EstimateCard } from './EstimateCard';
 
 /** Downloads the receipt PDF to the cache and opens the share sheet. */
 export async function shareReceipt(api: CustomerApi, jobId: string): Promise<void> {
@@ -27,7 +28,7 @@ export function JobDetailScreen({
   share?: typeof shareReceipt;
 }) {
   const { api } = useSession();
-  const [job, reload] = useLoad(() => api.job(id), [api, id]);
+  const [job, reload] = useLoad(() => Promise.all([api.job(id), api.estimates(id)]), [api, id]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +57,8 @@ export function JobDetailScreen({
         <Button label="Try again" variant="secondary" onPress={reload} />
       </Screen>
     );
-  const j = job.data;
+  const [j, estimates] = job.data;
+  const current = estimates.find((e) => e.status !== 'SUPERSEDED');
   return (
     <Screen>
       <Title>{j.jobNumber}</Title>
@@ -76,6 +78,7 @@ export function JobDetailScreen({
           ))}
         </>
       ) : null}
+      {current ? <EstimateCard estimate={current} onDecided={reload} /> : null}
       <Title>Progress</Title>
       {j.timeline.map((t) => (
         <Body key={t.at + t.status}>

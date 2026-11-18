@@ -27,7 +27,10 @@ import {
   type CustomerComplaintRequest,
   CustomerComplaintRequestSchema,
   type CustomerJob,
+  type CustomerEstimate,
   type CustomerProfile,
+  type EstimateDecisionRequest,
+  EstimateDecisionSchema,
   type DocumentLink,
   ReceiptLayoutSchema,
   type StoredFileInfo,
@@ -46,6 +49,7 @@ import {
 } from '../customer-auth/customer-principal.js';
 import { CustomersService } from '../customers/customers.service.js';
 import { DocumentsService } from '../documents/documents.service.js';
+import { EstimatesService } from '../estimates/estimates.service.js';
 import { uploadInterceptor } from '../files/files.controller.js';
 import { FilesService } from '../files/files.service.js';
 import { requireIdempotencyKey } from '../idempotency/idempotency.service.js';
@@ -71,6 +75,7 @@ export class CustomerPortalController {
     private readonly customers: CustomersService,
     private readonly files: FilesService,
     private readonly documents: DocumentsService,
+    private readonly estimates: EstimatesService,
   ) {}
 
   @Get('me')
@@ -183,5 +188,23 @@ export class CustomerPortalController {
       userId: null,
       source: 'CUSTOMER_APP',
     });
+  }
+
+  @Get('jobs/:id/estimates')
+  myEstimates(
+    @CurrentCustomer() me: CustomerPrincipal,
+    @Param('id', uuidPipe) id: string,
+  ): Promise<CustomerEstimate[]> {
+    return this.estimates.listForCustomer(me.organizationId, me.customerId, id);
+  }
+
+  @Post('estimates/:id/decision')
+  @HttpCode(HttpStatus.OK)
+  decide(
+    @CurrentCustomer() me: CustomerPrincipal,
+    @Param('id', uuidPipe) id: string,
+    @Body(new ZodValidationPipe(EstimateDecisionSchema)) body: EstimateDecisionRequest,
+  ): Promise<CustomerEstimate> {
+    return this.estimates.customerDecision(me.organizationId, me.customerId, id, body);
   }
 }

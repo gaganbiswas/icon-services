@@ -61,6 +61,22 @@ describe('transition matrix', () => {
     ).toBeNull();
   });
 
+  it('allows returning unrepaired only after the customer rejected', () => {
+    expect(
+      checkTransition('AWAITING_CUSTOMER_APPROVAL', 'READY_FOR_DELIVERY', {
+        permissions: staff,
+        reason: 'Declined',
+      }),
+    ).toBe('ESTIMATE_REJECTION_REQUIRED');
+    expect(
+      checkTransition('AWAITING_CUSTOMER_APPROVAL', 'READY_FOR_DELIVERY', {
+        permissions: staff,
+        reason: 'Customer declined',
+        hasRejectedEstimate: true,
+      }),
+    ).toBeNull();
+  });
+
   it('requires reasons for hold, cancel and send-backs', () => {
     expect(checkTransition('DIAGNOSIS', 'ON_HOLD', { permissions: staff })).toBe('REASON_REQUIRED');
     expect(checkTransition('DIAGNOSIS', 'CANCELLED', { permissions: staff, reason: '  ' })).toBe(

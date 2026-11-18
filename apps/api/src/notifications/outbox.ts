@@ -5,7 +5,9 @@ export type NotificationEvent =
   | 'JOB_STATUS_CHANGED'
   | 'JOB_UPDATE_POSTED'
   | 'REPAIR_COMPLETED'
-  | 'READY_FOR_DELIVERY';
+  | 'READY_FOR_DELIVERY'
+  | 'ESTIMATE_READY'
+  | 'ESTIMATE_DECISION_RECORDED';
 
 export interface OutboxEntry {
   readonly organizationId: string;

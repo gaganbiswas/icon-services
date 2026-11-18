@@ -169,10 +169,11 @@ describe('NewRequestScreen', () => {
 
 describe('JobDetailScreen', () => {
   it('shows customer-friendly progress and shares the receipt', async () => {
-    const { api } = fakeApi(
-      (path) => (path === '/customer/auth/refresh' ? json(200, TOKENS) : json(200, JOB)),
-      'stored-refresh-token-000000',
-    );
+    const { api } = fakeApi((path) => {
+      if (path === '/customer/auth/refresh') return json(200, TOKENS);
+      if (path === '/customer/jobs/job-1/estimates') return json(200, []);
+      return json(200, JOB);
+    }, 'stored-refresh-token-000000');
     const share = jest.fn(() => Promise.resolve());
     await render(
       <SessionProvider api={api}>
@@ -184,5 +185,73 @@ describe('JobDetailScreen', () => {
     expect(screen.getByText(/Replacement part ordered/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Download / share receipt' }));
     await waitFor(() => expect(share).toHaveBeenCalledWith(api, 'job-1'));
+  });
+});
+
+describe('EstimateCard on the job screen', () => {
+  const ESTIMATE = {
+    id: 'est-1',
+    version: 2,
+    status: 'SENT',
+    expired: false,
+    currency: 'USD',
+    subtotal: '1000.0000',
+    discountTotal: '0.0000',
+    total: '1000.0000',
+    customerPayable: '1000.0000',
+    covered: '0.0000',
+    taxNote: 'Taxes, if applicable, to be confirmed.',
+    validUntil: '2026-12-02',
+    terms: 'Placeholder terms.',
+    notes: null,
+    lines: [
+      {
+        id: 'l1',
+        position: 1,
+        lineType: 'PART',
+        description: 'Keyboard',
+        sku: null,
+        quantity: '1.0000',
+        unit: 'EA',
+        unitPrice: '1000.0000',
+        discount: '0.0000',
+        coverage: 'CUSTOMER_PAY',
+        lineTotal: '1000.0000',
+      },
+    ],
+    sentAt: '2026-11-18T10:00:00.000Z',
+    decision: null,
+    jobNumber: 'A1-2026-000007',
+    businessName: 'Dev Org',
+    device: 'Printer: Inkly P200',
+  };
+
+  it('approves only after accepting terms and confirming', async () => {
+    let decided: Record<string, unknown> | null = null;
+    const { api } = fakeApi((path, init) => {
+      if (path === '/customer/auth/refresh') return json(200, TOKENS);
+      if (path === '/customer/jobs/job-1/estimates')
+        return json(200, [decided ? { ...ESTIMATE, status: 'APPROVED' } : ESTIMATE]);
+      if (path === '/customer/estimates/est-1/decision') {
+        decided = JSON.parse(String(init.body)) as Record<string, unknown>;
+        return json(200, { ...ESTIMATE, status: 'APPROVED' });
+      }
+      return json(200, JOB);
+    }, 'stored-refresh-token-000000');
+    await render(
+      <SessionProvider api={api}>
+        <JobDetailScreen id="job-1" share={jest.fn()} />
+      </SessionProvider>,
+    );
+    expect(await screen.findByText(/Amount to approve: \$1,000\.00/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Approve estimate' })).toBeDisabled();
+    await fireEvent.press(
+      screen.getByRole('checkbox', { name: 'I have read and accept the terms' }),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Approve estimate' }));
+    expect(decided).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Yes, approve' }));
+    await waitFor(() => expect(decided).toEqual({ decision: 'APPROVED', termsAccepted: true }));
+    expect(await screen.findByText('You approved this estimate.')).toBeOnTheScreen();
   });
 });

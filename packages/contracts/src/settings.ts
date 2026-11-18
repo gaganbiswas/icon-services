@@ -39,6 +39,20 @@ export const PrivacySettingsSchema = z.object({
   consentPolicyVersion: z.string().min(1).max(50),
 });
 
+export const MoneySettingsSchema = z.object({
+  /** ISO 4217; null until the owner confirms (question B11). Never assumed. */
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .nullable(),
+});
+
+export const EstimateSettingsSchema = z.object({
+  validityDays: z.number().int().min(1).max(90),
+  /** Terms shown with every estimate (PLACEHOLDER until supplied, H59). */
+  terms: z.string().min(1).max(4000),
+});
+
 export const PhoneSettingsSchema = z.object({
   /** ISO 3166-1 region used when a number has no country code; null = require +country. */
   defaultRegion: z
@@ -67,6 +81,18 @@ export const SETTINGS = {
   privacy: {
     schema: PrivacySettingsSchema,
     default: { consentPolicyVersion: 'UNCONFIRMED-DRAFT' },
+  },
+  money: {
+    schema: MoneySettingsSchema,
+    default: { currency: null as string | null },
+  },
+  estimates: {
+    schema: EstimateSettingsSchema,
+    default: {
+      validityDays: 14,
+      terms:
+        'Estimate terms to be confirmed by the business. Prices exclude any applicable taxes, which will be confirmed.',
+    },
   },
   phone: {
     schema: PhoneSettingsSchema,

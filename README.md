@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 4 complete — job lifecycle with technician workspace, assignments, diagnosis, work logs,
-> customer updates and queued notifications (mock providers). Estimates start in Phase 5.
+> **Status:** Phase 5 complete — versioned estimates and customer approval (Android app or single-use link on the
+> customer website). Inventory starts in Phase 6. Tax is not calculated until the accountant confirms configuration.
 
 ## Repository layout
 
@@ -41,6 +41,9 @@ bun run db:migrate            # apply Prisma migrations to the dev database
 bun run db:seed:dev           # dev-only: placeholder org/branch + Super Admin from SEED_ADMIN_*
 bun run dev                   # API :4000, admin :5173, web :3000, Expo (Metro)
 ```
+
+Estimates require the business currency: `PUT /api/v1/settings/money` with `{"value":{"currency":"<ISO code>"},"reason":"…"}`
+(not assumed — owner question B11). Approval links open on the customer website (`apps/web`, http://localhost:3000/estimate).
 
 Notifications are sent by a separate worker process (mock WhatsApp/email providers until Phase 10):
 `bun run --filter @icon/api build && bun run --filter @icon/api start:worker`.
