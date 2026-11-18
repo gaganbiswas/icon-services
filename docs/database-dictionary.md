@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 6 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 8 (2026-11-18).
 
 ## Conventions
 
@@ -116,6 +116,13 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `stock_movements` | Append-only ledger (trigger). Signed `on_hand_delta` / `reserved_delta` with per-type direction CHECKs; ADJUST and overrides require a reason; job movements require `job_id`; transfers paired by `transfer_id`. `branch_stock` must equal the sum of deltas (`GET /inventory/reconciliation`) |
 | `job_parts` | Per job and part: reserved, consumed, returned (≥ 0) and removed/defective part description, serial and disposition |
 
+## Tables (Phase 8, ADR 0016)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `payments` | Money received on the customer's account; unique `(organization_id, receipt_number)`; amount > 0; reference required except cash; `allocated_total` (0 until Phase 7 invoices) + `refunded_total` ≤ amount; reversed ⇒ nothing allocated or refunded. **Trigger:** core fields immutable, no deletes, reversed rows frozen |
+| `payment_refunds` | Append-only refunds with own number, method, reference, reason, approver |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -128,6 +135,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase8_payments` | Payments and refunds; immutability triggers |
 | `…_phase6_inventory` | Parts, suppliers, branch stock, ledger, job parts; constraints and append-only trigger |
 | `…_phase5_estimates` | Estimates, lines, decisions, links; immutability triggers |
 | `…_phase4_lifecycle_work_notifications`, `…_phase4_outbox_branch` | Phase 4 tables, constraints and append-only triggers |

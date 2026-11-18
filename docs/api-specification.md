@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 6 (2026-11-18).
+Updated: Phase 8 (2026-11-18).
 
 ## Conventions
 
@@ -127,6 +127,24 @@ Quantities are decimal strings (4 decimals). Stock that would fall below zero re
 | GET | `/jobs/:id/parts` | `jobs.read` | |
 | POST | `/jobs/:id/parts` | `worklogs.write` | `{partId, action: RESERVE|RELEASE|CONSUME|RETURN, quantity, allowNegative?, reason?}`; assigned technicians only |
 | PUT | `/jobs/:id/parts/removed` | `worklogs.write` | Removed/defective part description, serial, disposition |
+
+## Phase 8 endpoints (payments, ADR 0016)
+
+Payments sit on the customer's account until invoices exist (Phase 7). `CONFIGURATION_REQUIRED` until a currency is set.
+References that look like card numbers are rejected.
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| POST | `/payments` | `payments.record` | `Idempotency-Key` required; `{branchId, customerId, jobId?, amount, method, reference?, receivedAt?, notes?}` |
+| GET | `/payments?customerId=&jobId=&branchId=` | `payments.read` | Branch-scoped |
+| GET | `/payments/:id` | `payments.read` | |
+| POST | `/payments/:id/refunds` | `payments.refund` | `{amount, method, reference?, reason}`; `REFUND_EXCEEDS_BALANCE` |
+| POST | `/payments/:id/reversal` | `payments.refund` | `{reason}`; only with nothing refunded/allocated (`PAYMENT_NOT_REVERSIBLE`) |
+| POST | `/payments/:id/receipt?layout=` | `payments.read` | Receipt PDF; new version after reversal |
+| GET | `/customers/:id/account` | `payments.read` | received / refunded / allocated / on account |
+| GET | `/reports/collections?from=&to=&branchId=` | `reports.read` + `payments.read` | By method and cashier; reversed excluded; refunds by refund date |
+| GET | `/customer/payments` | customer | Own receipts |
+| POST | `/customer/payments/:id/receipt` | customer | Own receipt PDF |
 
 ### Customer API (customer access token; identity from token only)
 

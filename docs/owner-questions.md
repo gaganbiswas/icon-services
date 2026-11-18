@@ -77,7 +77,7 @@ confirmation from the business's accountant / tax professional.
 36. Is partial delivery (e.g. returning some accessories/items) needed? _answer_
 37. Unclaimed-device policy (days before reminders/storage charges)? _answer_
 38. Payment methods to enable: cash, UPI, bank transfer, card terminal,
-    cheque, other? Any limit on cash amounts? _answer_
+    cheque, other? Any limit on cash amounts? _answer_ (Default in use: all enabled, no cash limit — ADR 0016.)
 39. Is inventory tracked today? Number of SKUs, suppliers to track? Existing
     data to import (customers, parts, open jobs) — format? _answer_ (Built: catalogue, branch stock ledger, optional suppliers; no import yet — ADR 0015.)
 40. Thermal receipt printer model/paper width (58 mm / 80 mm), or A4 only? _answer_

@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 6 complete — parts catalogue, branch stock with an append-only ledger, job parts and low-stock
-> report. Invoicing (Phase 7) waits for written tax confirmation from the accountant.
+> **Status:** Phases 1–6 and 8 complete — payments, refunds, reversals and receipts are recorded on the customer's
+> account. Invoicing (Phase 7) waits for written tax confirmation from the accountant.
 
 ## Repository layout
 
