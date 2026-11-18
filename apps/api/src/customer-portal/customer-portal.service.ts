@@ -7,7 +7,7 @@ import { AppException } from '../common/app-exception.js';
 import type { CustomerPrincipal } from '../customer-auth/customer-principal.js';
 import { FilesService } from '../files/files.service.js';
 import { runIdempotent } from '../idempotency/idempotency.service.js';
-import { JOB_DETAIL_SELECT, toCustomerJob } from '../jobs/job.mapper.js';
+import { CUSTOMER_JOB_SELECT, toCustomerJob } from '../jobs/job.mapper.js';
 import { JobsService } from '../jobs/jobs.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
 
@@ -29,7 +29,7 @@ export class CustomerPortalService {
   async listJobs(me: CustomerPrincipal): Promise<CustomerJob[]> {
     const rows = await this.prisma.serviceJob.findMany({
       where: { organizationId: me.organizationId, customerId: me.customerId },
-      select: JOB_DETAIL_SELECT,
+      select: CUSTOMER_JOB_SELECT,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -39,7 +39,7 @@ export class CustomerPortalService {
   async getJob(me: CustomerPrincipal, id: string): Promise<CustomerJob> {
     const row = await this.prisma.serviceJob.findFirst({
       where: { id, organizationId: me.organizationId, customerId: me.customerId },
-      select: JOB_DETAIL_SELECT,
+      select: CUSTOMER_JOB_SELECT,
     });
     if (!row) throw AppException.notFound('Job');
     return toCustomerJob(row);
@@ -124,7 +124,7 @@ export class CustomerPortalService {
             });
             const row = await tx.serviceJob.findUniqueOrThrow({
               where: { id: job.id },
-              select: JOB_DETAIL_SELECT,
+              select: CUSTOMER_JOB_SELECT,
             });
             return { status: 201, body: toCustomerJob(row), resourceId: job.id };
           },

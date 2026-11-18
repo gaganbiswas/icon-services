@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "ICON INFOSYS SERVICE MANAGEMENT — NestJS REST API (modular monolith).",
+  "description": "ICON INFOSYS SERVICE MANAGEMENT \u2014 NestJS REST API (modular monolith).",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "dev:worker": "node --watch --enable-source-maps dist/worker.js",
+    "start:worker": "node --enable-source-maps dist/worker.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1171.0",

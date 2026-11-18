@@ -8,6 +8,7 @@
 //
 // Phase 2: tenancy, identity, RBAC, sessions and audit.
 // Phase 3: customers, assets, files, intake, numbering, settings, documents.
+// Phase 4: lifecycle, assignments, diagnoses, work logs, notification outbox.
 
 generator client {
   provider            = "prisma-client"
@@ -110,6 +111,9 @@ model User {
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments         JobAssignment[]      @relation("AssignedTechnician")
+  diagnoses           Diagnosis[]
+  workLogs            WorkLog[]
   roles               UserRole[]           @relation("UserRoles")
   branchAccess        UserBranchAccess[]   @relation("UserBranchAccess")
   sessions            AuthSession[]
@@ -681,6 +685,11 @@ model ServiceJob {
   customerAcknowledgedAt DateTime?            @map("customer_acknowledged_at") @db.Timestamptz(3)
   /// SIGNED_PAPER | VERBAL | APP_SUBMISSION
   acknowledgementMethod  String?              @map("acknowledgement_method") @db.VarChar(30)
+  /// Completion record required before REPAIR_COMPLETED (ADR 0013).
+  repairSummary          String?              @map("repair_summary") @db.VarChar(4000)
+  qcChecklist            Json?                @map("qc_checklist")
+  completedById          String?              @map("completed_by_id") @db.Uuid
+  completedAt            DateTime?            @map("completed_at") @db.Timestamptz(3)
   createdById            String?              @map("created_by_id") @db.Uuid
   createdByCustomerId    String?              @map("created_by_customer_id") @db.Uuid
   version                Int                  @default(1)
@@ -693,6 +702,9 @@ model ServiceJob {
   asset         Asset              @relation(fields: [organizationId, assetId], references: [organizationId, id], onDelete: Restrict)
   statusHistory JobStatusHistory[]
   attachments   JobAttachment[]
+  assignments   JobAssignment[]
+  diagnoses     Diagnosis[]
+  workLogs      WorkLog[]
 
   @@unique([organizationId, jobNumber])
   @@unique([organizationId, id])
@@ -793,4 +805,157 @@ model CustomerOtpChallenge {
 
   @@index([organizationId, phoneE164, createdAt(sort: Desc)])
   @@map("customer_otp_challenges")
+}
+
+// ---------------------------------------------------------------------------
+// Technician work (Phase 4, ADR 0013)
+// ---------------------------------------------------------------------------
+
+/// Assignment history: rows are ended, never deleted.
+model JobAssignment {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  jobId            String    @map("job_id") @db.Uuid
+  technicianUserId String    @map("technician_user_id") @db.Uuid
+  assignedById     String    @map("assigned_by_id") @db.Uuid
+  note             String?   @db.VarChar(500)
+  assignedAt       DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  endedAt          DateTime? @map("ended_at") @db.Timestamptz(3)
+  endedById        String?   @map("ended_by_id") @db.Uuid
+
+  job        ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  technician User       @relation("AssignedTechnician", fields: [technicianUserId], references: [id], onDelete: Restrict)
+
+  @@index([jobId])
+  @@index([technicianUserId, endedAt])
+  @@map("job_assignments")
+}
+
+model Diagnosis {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  jobId            String   @map("job_id") @db.Uuid
+  technicianUserId String   @map("technician_user_id") @db.Uuid
+  symptom          String   @db.VarChar(2000)
+  findings         String   @db.VarChar(4000)
+  rootCause        String?  @map("root_cause") @db.VarChar(2000)
+  recommendation   String?  @db.VarChar(2000)
+  /// Staff-only; never returned by customer endpoints.
+  internalNotes    String?  @map("internal_notes") @db.VarChar(4000)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job        ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  technician User       @relation(fields: [technicianUserId], references: [id], onDelete: Restrict)
+
+  @@index([jobId, createdAt])
+  @@map("diagnoses")
+}
+
+enum WorkLogVisibility {
+  INTERNAL
+  CUSTOMER
+
+  @@map("work_log_visibility")
+}
+
+/// Work entries and notes. INTERNAL entries are staff-only notes; CUSTOMER
+/// entries are customer-safe progress messages.
+model WorkLog {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  jobId           String            @map("job_id") @db.Uuid
+  authorUserId    String            @map("author_user_id") @db.Uuid
+  description     String            @db.VarChar(4000)
+  durationMinutes Int?              @map("duration_minutes")
+  visibility      WorkLogVisibility
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job    ServiceJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  author User       @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([jobId, createdAt])
+  @@map("work_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (outbox; providers mocked until Phase 10)
+// ---------------------------------------------------------------------------
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD
+  SKIPPED
+
+  @@map("outbox_status")
+}
+
+model NotificationOutbox {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  /// Branch of the related job, for branch-scoped listing.
+  branchId       String?      @map("branch_id") @db.Uuid
+  /// JOB_RECEIVED | JOB_STATUS_CHANGED | JOB_UPDATE_POSTED | REPAIR_COMPLETED | READY_FOR_DELIVERY
+  eventType      String       @map("event_type") @db.VarChar(50)
+  aggregateType  String       @map("aggregate_type") @db.VarChar(50)
+  aggregateId    String       @map("aggregate_id") @db.Uuid
+  customerId     String       @map("customer_id") @db.Uuid
+  /// References and template parameters only — no free-text PII beyond what the template needs.
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lockedUntil    DateTime?    @map("locked_until") @db.Timestamptz(3)
+  lastError      String?      @map("last_error") @db.VarChar(200)
+  idempotencyKey String       @unique @map("idempotency_key") @db.VarChar(150)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  deliveries NotificationDelivery[]
+
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, branchId])
+  @@index([aggregateType, aggregateId])
+  @@map("notification_outbox")
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+
+  @@map("notification_channel")
+}
+
+enum DeliveryStatus {
+  /// Provider accepted the request — NOT proof of delivery (CLAUDE.md §11.15).
+  ACCEPTED
+  FAILED
+  SKIPPED_NO_CONSENT
+  SKIPPED_NO_ADDRESS
+  /// Set only from provider delivery callbacks (Phase 10).
+  DELIVERED
+  READ
+
+  @@map("delivery_status")
+}
+
+model NotificationDelivery {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  outboxId          String              @map("outbox_id") @db.Uuid
+  channel           NotificationChannel
+  provider          String              @db.VarChar(50)
+  templateName      String              @map("template_name") @db.VarChar(100)
+  status            DeliveryStatus
+  providerMessageId String?             @map("provider_message_id") @db.VarChar(200)
+  errorCode         String?             @map("error_code") @db.VarChar(100)
+  attempt           Int
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  deliveredAt       DateTime?           @map("delivered_at") @db.Timestamptz(3)
+  readAt            DateTime?           @map("read_at") @db.Timestamptz(3)
+
+  outbox NotificationOutbox @relation(fields: [outboxId], references: [id], onDelete: Restrict)
+
+  @@unique([outboxId, channel, attempt])
+  @@index([outboxId])
+  @@map("notification_deliveries")
 }

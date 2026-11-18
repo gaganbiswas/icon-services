@@ -295,6 +295,7 @@ describe('Customer portal (real PostgreSQL + S3)', () => {
           'statusLabel',
           'submittedAt',
           'timeline',
+          'updates',
         ].sort(),
       );
 

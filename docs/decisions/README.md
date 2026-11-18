@@ -21,5 +21,6 @@ Architecture/Product Decision Records (ADRs). Each decision has a status:
 | 0010 | Staff authentication, sessions and RBAC            | Approved  | 2026-11-18 |
 | 0011 | MFA plan (TOTP for privileged roles)               | Approved (plan) | 2026-11-18 |
 | 0012 | Phase 3 intake, numbering, documents, customer sign-in | Approved (with placeholders) | 2026-11-18 |
+| 0013 | Job lifecycle, technician work, notification outbox | Approved | 2026-11-18 |
 
 New decisions: copy `template.md`, use the next number, add a row above.

@@ -1,11 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  Address,
-  CreateJobRequest,
-  JobDetail,
-  JobSummary,
-  Page,
-  PaginationQuery,
+import {
+  type Address,
+  CUSTOMER_STATUS_BY_JOB_STATUS,
+  CUSTOMER_STATUS_LABELS,
+  type CreateJobRequest,
+  type JobDetail,
+  type JobSummary,
+  type Page,
+  type PaginationQuery,
 } from '@icon/contracts';
 import type { $Enums, Prisma, PrismaClient } from '@icon/database';
 
@@ -15,6 +17,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { AppException } from '../common/app-exception.js';
 import { FilesService, type Uploader } from '../files/files.service.js';
 import { runIdempotent } from '../idempotency/idempotency.service.js';
+import { enqueueNotification } from '../notifications/outbox.js';
 import { NumberingService } from '../numbering/numbering.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -185,7 +188,7 @@ export class JobsService {
       },
       select: { id: true },
     });
-    await tx.jobStatusHistory.create({
+    const history = await tx.jobStatusHistory.create({
       data: {
         jobId: job.id,
         fromStatus: null,
@@ -224,6 +227,19 @@ export class JobsService {
         createdByCustomerId: customerId,
       },
     });
+    await enqueueNotification(tx, {
+      organizationId: input.organizationId,
+      branchId: branch.id,
+      jobId: job.id,
+      customerId: customer.id,
+      eventType: 'JOB_RECEIVED',
+      payload: {
+        jobNumber,
+        statusLabel: CUSTOMER_STATUS_LABELS[CUSTOMER_STATUS_BY_JOB_STATUS[input.status]],
+        message: null,
+      },
+      dedupeKey: history.id,
+    });
     const row = await tx.serviceJob.findUniqueOrThrow({
       where: { id: job.id },
       select: JOB_DETAIL_SELECT,
@@ -238,12 +254,16 @@ export class JobsService {
       status?: $Enums.JobStatus | undefined;
       branchId?: string | undefined;
       customerId?: string | undefined;
+      assignedToMe?: 'true' | 'false' | undefined;
     },
   ): Promise<Page<JobSummary>> {
     const where: Prisma.ServiceJobWhereInput = {
       ...this.scope(principal),
       ...(query.status ? { status: query.status } : {}),
       ...(query.customerId ? { customerId: query.customerId } : {}),
+      ...(query.assignedToMe === 'true'
+        ? { assignments: { some: { technicianUserId: principal.userId, endedAt: null } } }
+        : {}),
     };
     if (query.branchId) {
       where.AND = [{ branchId: query.branchId }];

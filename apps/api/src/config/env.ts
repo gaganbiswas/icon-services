@@ -80,6 +80,9 @@ export const EnvSchema = z
     CUSTOMER_JWT_AUDIENCE: z.string().min(1).default('icon-service-customer'),
     CUSTOMER_REFRESH_TOKEN_IDLE_TTL_DAYS: intInRange(1, 90, 30),
     CUSTOMER_SESSION_ABSOLUTE_TTL_DAYS: intInRange(1, 365, 90),
+
+    // Background worker (ADR 0013)
+    NOTIFICATION_POLL_INTERVAL_MS: intInRange(250, 60_000, 2_000),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.AUTH_COOKIE_SECURE) {

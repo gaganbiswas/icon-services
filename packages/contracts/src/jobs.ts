@@ -124,6 +124,8 @@ export const JobListQuerySchema = z.object({
   status: z.enum(JOB_STATUSES).optional(),
   branchId: z.uuid().optional(),
   customerId: z.uuid().optional(),
+  /** Technician workspace: only jobs currently assigned to the caller. */
+  assignedToMe: z.enum(['true', 'false']).optional(),
 });
 
 export const JobSummarySchema = z.object({
@@ -235,6 +237,8 @@ export const CustomerJobSchema = z.object({
   }),
   complaint: z.string(),
   submittedAt: z.iso.datetime(),
+  /** Customer-visible progress messages from staff. */
+  updates: z.array(z.object({ message: z.string(), at: z.iso.datetime() })),
   timeline: z.array(
     z.object({
       status: z.enum(CUSTOMER_STATUSES),

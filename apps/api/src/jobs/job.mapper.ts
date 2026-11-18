@@ -64,6 +64,18 @@ export const JOB_DETAIL_SELECT = {
   },
 } satisfies Prisma.ServiceJobSelect;
 
+/** Customer view adds customer-visible progress messages only. */
+export const CUSTOMER_JOB_SELECT = {
+  ...JOB_DETAIL_SELECT,
+  workLogs: {
+    where: { visibility: 'CUSTOMER' },
+    select: { description: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  },
+} satisfies Prisma.ServiceJobSelect;
+
+type CustomerRow = Prisma.ServiceJobGetPayload<{ select: typeof CUSTOMER_JOB_SELECT }>;
+
 type SummaryRow = Prisma.ServiceJobGetPayload<{ select: typeof JOB_SUMMARY_SELECT }>;
 type DetailRow = Prisma.ServiceJobGetPayload<{ select: typeof JOB_DETAIL_SELECT }>;
 
@@ -123,7 +135,7 @@ export function toJobDetail(row: DetailRow): JobDetail {
  * Customer view: whitelisted fields only. Internal statuses, reasons, staff
  * identities and internal attachments are never included (CLAUDE.md §4.3).
  */
-export function toCustomerJob(row: DetailRow): CustomerJob {
+export function toCustomerJob(row: CustomerRow): CustomerJob {
   const timeline: CustomerJob['timeline'] = [];
   for (const h of row.statusHistory) {
     const status = CUSTOMER_STATUS_BY_JOB_STATUS[h.toStatus];
@@ -152,6 +164,7 @@ export function toCustomerJob(row: DetailRow): CustomerJob {
     },
     complaint: row.complaint,
     submittedAt: row.createdAt.toISOString(),
+    updates: row.workLogs.map((w) => ({ message: w.description, at: w.createdAt.toISOString() })),
     timeline,
   };
 }

@@ -13,6 +13,7 @@ import { FilesModule } from './files/files.module.js';
 import type { Env } from './config/env.js';
 import { HealthModule } from './health/health.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
 import { SettingsModule } from './settings/settings.module.js';
@@ -42,6 +43,7 @@ export class AppModule {
         CustomersModule,
         AssetsModule,
         JobsModule,
+        NotificationsModule,
         CustomerPortalModule,
       ],
     };
