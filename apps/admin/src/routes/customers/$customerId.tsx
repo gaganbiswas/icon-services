@@ -1,4 +1,12 @@
-import type { Asset, Consent, Customer, JobSummary, Page } from '@icon/contracts';
+import {
+  type Asset,
+  type Consent,
+  type Customer,
+  type CustomerAccount,
+  type JobSummary,
+  type Page,
+  formatMoney,
+} from '@icon/contracts';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -38,6 +46,14 @@ function CustomerDetailPage() {
   const devices = useResource(
     () => client.get<Asset[]>(`/customers/${customerId}/assets`),
     [client, customerId],
+  );
+  const canSeePayments = useCan('payments.read');
+  const account = useResource(
+    () =>
+      canSeePayments
+        ? client.get<CustomerAccount>(`/customers/${customerId}/account`)
+        : Promise.resolve(null),
+    [client, customerId, canSeePayments],
   );
   const jobs = useResource(
     () => client.get<Page<JobSummary>>('/jobs', { customerId, pageSize: 50 }),
@@ -129,6 +145,28 @@ function CustomerDetailPage() {
           </section>
         )}
       </ResourceView>
+
+      {canSeePayments ? (
+        <ResourceView resource={account}>
+          {(acc) =>
+            acc && acc.currency ? (
+              <section className="card" aria-labelledby="account-heading">
+                <h2 id="account-heading">Account</h2>
+                <dl className="summary">
+                  <dt>Received</dt>
+                  <dd>{formatMoney(acc.received, acc.currency)}</dd>
+                  <dt>Refunded</dt>
+                  <dd>{formatMoney(acc.refunded, acc.currency)}</dd>
+                  <dt>On account (not yet invoiced)</dt>
+                  <dd>
+                    <strong>{formatMoney(acc.onAccount, acc.currency)}</strong>
+                  </dd>
+                </dl>
+              </section>
+            ) : null
+          }
+        </ResourceView>
+      ) : null}
 
       <section aria-labelledby="devices-heading">
         <h2 id="devices-heading">Devices</h2>

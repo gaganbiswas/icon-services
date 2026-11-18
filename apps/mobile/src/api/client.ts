@@ -4,6 +4,7 @@ import {
   type AssetCategory,
   type CustomerComplaintRequest,
   type CustomerEstimate,
+  type CustomerPayment,
   type CustomerJob,
   type CustomerProfile,
   type CustomerTokenResponse,
@@ -132,6 +133,11 @@ export class CustomerApi {
     this.authorized<CustomerEstimate>(`/customer/estimates/${encodeURIComponent(id)}/decision`, {
       method: 'POST',
       body: { decision, termsAccepted, ...(comment ? { comment } : {}) },
+    });
+  payments = () => this.authorized<CustomerPayment[]>('/customer/payments', { method: 'GET' });
+  paymentReceipt = (id: string) =>
+    this.authorized<DocumentLink>(`/customer/payments/${encodeURIComponent(id)}/receipt`, {
+      method: 'POST',
     });
   receipt = (id: string) =>
     this.authorized<DocumentLink>(`/customer/jobs/${encodeURIComponent(id)}/receipt`, {

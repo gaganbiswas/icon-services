@@ -16,6 +16,7 @@ import { InventoryModule } from './inventory/inventory.module.js';
 import { EstimatesModule } from './estimates/estimates.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
 import { SettingsModule } from './settings/settings.module.js';
@@ -47,6 +48,7 @@ export class AppModule {
         JobsModule,
         EstimatesModule,
         InventoryModule,
+        PaymentsModule,
         NotificationsModule,
         CustomerPortalModule,
       ],

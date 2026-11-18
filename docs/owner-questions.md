@@ -58,6 +58,7 @@ confirmation from the business's accountant / tax professional.
     jobs invoiced (zero-value invoice, no invoice, claim document)? _answer_
 27. Can the accountant provide a set of **sample invoices with expected
     totals** to use as test vectors? _answer_
+27a. Payments received before an invoice (advances): is a GST receipt voucher required, and what wording must a payment receipt carry? (PLACEHOLDER footer in use: "Tax treatment of this payment to be confirmed.") _answer_
 
 ## D. Operations and policies
 

@@ -53,6 +53,15 @@ export const EstimateSettingsSchema = z.object({
   terms: z.string().min(1).max(4000),
 });
 
+export const PaymentSettingsSchema = z.object({
+  /** Enabled payment methods (owner question D38). */
+  methods: z
+    .array(z.enum(['CASH', 'UPI', 'BANK_TRANSFER', 'CARD_TERMINAL', 'CHEQUE', 'OTHER']))
+    .min(1),
+  /** Footer on payment receipts (PLACEHOLDER until accountant confirms, C27a). */
+  receiptFooter: z.string().min(1).max(1000),
+});
+
 export const PhoneSettingsSchema = z.object({
   /** ISO 3166-1 region used when a number has no country code; null = require +country. */
   defaultRegion: z
@@ -92,6 +101,23 @@ export const SETTINGS = {
       validityDays: 14,
       terms:
         'Estimate terms to be confirmed by the business. Prices exclude any applicable taxes, which will be confirmed.',
+    },
+  },
+  'numbering.receiptNumber': {
+    schema: NumberFormatSchema,
+    default: { template: 'RCPT-{BRANCH}-{YYYY}-{SEQ:6}', reset: 'YEARLY' } satisfies NumberFormat,
+  },
+  'numbering.refundNumber': {
+    schema: NumberFormatSchema,
+    default: { template: 'RFD-{BRANCH}-{YYYY}-{SEQ:6}', reset: 'YEARLY' } satisfies NumberFormat,
+  },
+  payments: {
+    schema: PaymentSettingsSchema,
+    default: {
+      methods: ['CASH', 'UPI', 'BANK_TRANSFER', 'CARD_TERMINAL', 'CHEQUE', 'OTHER'] as (
+        'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CARD_TERMINAL' | 'CHEQUE' | 'OTHER'
+      )[],
+      receiptFooter: 'Tax treatment of this payment to be confirmed.',
     },
   },
   phone: {

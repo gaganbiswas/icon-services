@@ -20,6 +20,9 @@ export function AppShell({
   const canWork = useCan('worklogs.write');
   const canNotifications = useCan('notifications.read');
   const canInventory = useCan('inventory.read');
+  const canReports = useCan('reports.read');
+  const canPayments = useCan('payments.read');
+  const canCollections = canReports && canPayments;
   return (
     <div className="shell">
       <header className="topbar">
@@ -60,6 +63,13 @@ export function AppShell({
               <li>
                 <Link to="/inventory" activeProps={{ 'aria-current': 'page' }}>
                   Inventory
+                </Link>
+              </li>
+            ) : null}
+            {canCollections ? (
+              <li>
+                <Link to="/reports/collections" activeProps={{ 'aria-current': 'page' }}>
+                  Collections
                 </Link>
               </li>
             ) : null}

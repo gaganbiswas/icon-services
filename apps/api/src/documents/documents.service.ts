@@ -4,7 +4,9 @@ import {
   CUSTOMER_STATUS_LABELS,
   type ChecklistItem,
   type DocumentLink,
+  PAYMENT_METHOD_LABELS,
   SETTINGS,
+  formatMoney,
 } from '@icon/contracts';
 import { Prisma, type PrismaClient } from '@icon/database';
 
@@ -19,6 +21,10 @@ import {
   type ReceiptLayout,
   renderJobReceiptHtml,
 } from './job-receipt.template.js';
+import {
+  type PaymentReceiptSnapshot,
+  renderPaymentReceiptHtml,
+} from './payment-receipt.template.js';
 import { PdfRenderer } from './pdf-renderer.service.js';
 
 @Injectable()
@@ -109,6 +115,135 @@ export class DocumentsService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Payment receipt (ADR 0016). A new version is generated when the payment's
+   * status changed since the last one (e.g. reversed), so reprints never hide a reversal.
+   */
+  async paymentReceipt(
+    organizationId: string,
+    paymentId: string,
+    layout: ReceiptLayout,
+    actor: { userId: string | null },
+  ): Promise<DocumentLink> {
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, organizationId },
+    });
+    if (!payment) throw AppException.notFound('Payment');
+    const latest = await this.prisma.document.findFirst({
+      where: {
+        organizationId,
+        entityType: 'payment',
+        entityId: paymentId,
+        documentType: 'PAYMENT_RECEIPT',
+        layout,
+      },
+      orderBy: { version: 'desc' },
+      select: { id: true, documentNumber: true, version: true, fileId: true, snapshot: true },
+    });
+    const latestStatus = (latest?.snapshot as { status?: string } | undefined)?.status;
+    if (latest && latestStatus === payment.status) return this.link(organizationId, latest);
+
+    const snapshot = await this.buildPaymentSnapshot(organizationId, paymentId);
+    const pdf = await this.renderer.render(renderPaymentReceiptHtml(snapshot, layout));
+    const version = (latest?.version ?? 0) + 1;
+    try {
+      const document = await this.prisma.$transaction(async (tx) => {
+        const fileId = await this.files.storeGenerated(
+          organizationId,
+          pdf,
+          `payment-receipt-${snapshot.receiptNumber}.pdf`,
+          'application/pdf',
+          tx,
+        );
+        const created = await tx.document.create({
+          data: {
+            organizationId,
+            branchId: payment.branchId,
+            documentType: 'PAYMENT_RECEIPT',
+            entityType: 'payment',
+            entityId: paymentId,
+            documentNumber: snapshot.receiptNumber,
+            layout,
+            version,
+            fileId,
+            snapshot: snapshot as unknown as Prisma.InputJsonValue,
+            generatedById: actor.userId,
+          },
+          select: { id: true, documentNumber: true, version: true, fileId: true },
+        });
+        await this.audit.record(tx, {
+          organizationId,
+          branchId: payment.branchId,
+          actorUserId: actor.userId,
+          actorType: actor.userId ? 'USER' : 'SYSTEM',
+          action: 'document.generated',
+          entityType: 'document',
+          entityId: created.id,
+          after: { documentType: 'PAYMENT_RECEIPT', paymentId, layout, version },
+        });
+        return created;
+      });
+      return await this.link(organizationId, document);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return this.paymentReceipt(organizationId, paymentId, layout, actor);
+      }
+      throw error;
+    }
+  }
+
+  private async buildPaymentSnapshot(
+    organizationId: string,
+    paymentId: string,
+  ): Promise<PaymentReceiptSnapshot> {
+    const payment = await this.prisma.payment.findFirstOrThrow({
+      where: { id: paymentId, organizationId },
+    });
+    const [organization, branch, customer, job, documents, payments] = await Promise.all([
+      this.prisma.organization.findUniqueOrThrow({
+        where: { id: organizationId },
+        select: { displayName: true, timezone: true },
+      }),
+      this.prisma.branch.findUniqueOrThrow({
+        where: { id: payment.branchId },
+        select: { name: true, timezone: true },
+      }),
+      this.prisma.customer.findUniqueOrThrow({
+        where: { id: payment.customerId },
+        select: { name: true, customerCode: true },
+      }),
+      payment.jobId
+        ? this.prisma.serviceJob.findUnique({
+            where: { id: payment.jobId },
+            select: { jobNumber: true },
+          })
+        : Promise.resolve(null),
+      this.settings.get(organizationId, 'documents'),
+      this.settings.get(organizationId, 'payments'),
+    ]);
+    const timeZone = branch.timezone ?? organization.timezone ?? 'UTC';
+    return {
+      business: {
+        name: organization.displayName,
+        header: documents.businessHeader,
+        branchName: branch.name,
+      },
+      receiptNumber: payment.receiptNumber,
+      receivedAt: formatDateTime(payment.receivedAt, timeZone),
+      timeZone,
+      customer: { name: customer.name, code: customer.customerCode },
+      jobNumber: job?.jobNumber ?? null,
+      amount: formatMoney(payment.amount.toFixed(4), payment.currency),
+      method: PAYMENT_METHOD_LABELS[payment.method],
+      reference: payment.reference,
+      status: payment.status,
+      reversalReason: payment.reversalReason,
+      footer: payments.receiptFooter,
+      footerIsPlaceholder: payments.receiptFooter === SETTINGS.payments.default.receiptFooter,
+      generatedAt: `${formatDateTime(new Date(), timeZone)} (${timeZone})`,
+    };
   }
 
   private async link(

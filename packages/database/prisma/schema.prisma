@@ -11,6 +11,7 @@
 // Phase 4: lifecycle, assignments, diagnoses, work logs, notification outbox.
 // Phase 5: estimates, lines, customer decisions, approval links.
 // Phase 6: parts, suppliers, branch stock, stock ledger, job parts.
+// Phase 8: payments, refunds (allocation to invoices arrives with Phase 7).
 
 generator client {
   provider            = "prisma-client"
@@ -1240,4 +1241,82 @@ model JobPart {
 
   @@unique([jobId, partId])
   @@map("job_parts")
+}
+
+// ---------------------------------------------------------------------------
+// Payments (Phase 8, ADR 0016). Money: NUMERIC(19,4).
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CARD_TERMINAL
+  CHEQUE
+  OTHER
+
+  @@map("payment_method")
+}
+
+enum PaymentStatus {
+  RECORDED
+  REVERSED
+
+  @@map("payment_status")
+}
+
+/// Money received. Core fields immutable (trigger); never deleted.
+model Payment {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  receiptNumber  String        @map("receipt_number") @db.VarChar(40)
+  customerId     String        @map("customer_id") @db.Uuid
+  jobId          String?       @map("job_id") @db.Uuid
+  currency       String        @db.Char(3)
+  amount         Decimal       @db.Decimal(19, 4)
+  method         PaymentMethod
+  /// UTR / cheque / slip number — never card numbers or secrets.
+  reference      String?       @db.VarChar(100)
+  receivedAt     DateTime      @map("received_at") @db.Timestamptz(3)
+  receivedById   String        @map("received_by_id") @db.Uuid
+  notes          String?       @db.VarChar(500)
+  status         PaymentStatus @default(RECORDED)
+  /// Maintained by invoice allocation (Phase 7); 0 until then.
+  allocatedTotal Decimal       @default(0) @map("allocated_total") @db.Decimal(19, 4)
+  refundedTotal  Decimal       @default(0) @map("refunded_total") @db.Decimal(19, 4)
+  reversedAt     DateTime?     @map("reversed_at") @db.Timestamptz(3)
+  reversedById   String?       @map("reversed_by_id") @db.Uuid
+  reversalReason String?       @map("reversal_reason") @db.VarChar(500)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  refunds PaymentRefund[]
+
+  @@unique([organizationId, receiptNumber])
+  @@index([organizationId, customerId])
+  @@index([jobId])
+  @@index([organizationId, branchId, receivedAt])
+  @@map("payments")
+}
+
+/// Append-only refunds of on-account money.
+model PaymentRefund {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  paymentId      String        @map("payment_id") @db.Uuid
+  refundNumber   String        @map("refund_number") @db.VarChar(40)
+  amount         Decimal       @db.Decimal(19, 4)
+  method         PaymentMethod
+  reference      String?       @db.VarChar(100)
+  reason         String        @db.VarChar(500)
+  approvedById   String        @map("approved_by_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, refundNumber])
+  @@index([paymentId])
+  @@index([organizationId, branchId, createdAt])
+  @@map("payment_refunds")
 }

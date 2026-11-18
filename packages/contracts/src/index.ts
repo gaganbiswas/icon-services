@@ -12,6 +12,7 @@ export * from './jobs.js';
 export * from './lifecycle.js';
 export * from './money.js';
 export * from './pagination.js';
+export * from './payments.js';
 export * from './permissions.js';
 export * from './phone.js';
 export * from './roles.js';

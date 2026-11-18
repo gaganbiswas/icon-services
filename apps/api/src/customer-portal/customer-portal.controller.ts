@@ -28,6 +28,7 @@ import {
   CustomerComplaintRequestSchema,
   type CustomerJob,
   type CustomerEstimate,
+  type CustomerPayment,
   type CustomerProfile,
   type EstimateDecisionRequest,
   EstimateDecisionSchema,
@@ -50,6 +51,7 @@ import {
 import { CustomersService } from '../customers/customers.service.js';
 import { DocumentsService } from '../documents/documents.service.js';
 import { EstimatesService } from '../estimates/estimates.service.js';
+import { PaymentsService } from '../payments/payments.service.js';
 import { uploadInterceptor } from '../files/files.controller.js';
 import { FilesService } from '../files/files.service.js';
 import { requireIdempotencyKey } from '../idempotency/idempotency.service.js';
@@ -76,6 +78,7 @@ export class CustomerPortalController {
     private readonly files: FilesService,
     private readonly documents: DocumentsService,
     private readonly estimates: EstimatesService,
+    private readonly payments: PaymentsService,
   ) {}
 
   @Get('me')
@@ -206,5 +209,19 @@ export class CustomerPortalController {
     @Body(new ZodValidationPipe(EstimateDecisionSchema)) body: EstimateDecisionRequest,
   ): Promise<CustomerEstimate> {
     return this.estimates.customerDecision(me.organizationId, me.customerId, id, body);
+  }
+
+  @Get('payments')
+  myPayments(@CurrentCustomer() me: CustomerPrincipal): Promise<CustomerPayment[]> {
+    return this.payments.customerPayments(me.organizationId, me.customerId);
+  }
+
+  @Post('payments/:id/receipt')
+  async paymentReceipt(
+    @CurrentCustomer() me: CustomerPrincipal,
+    @Param('id', uuidPipe) id: string,
+  ): Promise<DocumentLink> {
+    await this.payments.assertCustomerOwns(me.organizationId, me.customerId, id);
+    return this.documents.paymentReceipt(me.organizationId, id, 'A4', { userId: null });
   }
 }

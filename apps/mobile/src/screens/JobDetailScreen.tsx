@@ -1,6 +1,8 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { formatMoney } from '@icon/contracts';
 import { useState } from 'react';
+import { View } from 'react-native';
 
 import { type CustomerApi, errorMessage } from '../api/client';
 import { Body, Button, ErrorText, Screen, Title } from '../components/ui';
@@ -8,7 +10,25 @@ import { useSession } from '../session';
 import { useLoad } from '../use-load';
 import { EstimateCard } from './EstimateCard';
 
-/** Downloads the receipt PDF to the cache and opens the share sheet. */
+/** Downloads a PDF to the cache and opens the share sheet. */
+async function sharePdf(
+  link: { url: string; documentNumber: string },
+  title: string,
+): Promise<void> {
+  const target = new File(
+    Paths.cache,
+    `${title.replace(/\s+/g, '-').toLowerCase()}-${link.documentNumber.replace(/[^A-Za-z0-9-]/g, '_')}.pdf`,
+  );
+  if (target.exists) target.delete();
+  const file = await File.downloadFileAsync(link.url, target);
+  await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', dialogTitle: title });
+}
+
+export async function sharePaymentReceipt(api: CustomerApi, paymentId: string): Promise<void> {
+  await sharePdf(await api.paymentReceipt(paymentId), 'Payment receipt');
+}
+
+/** Downloads the job receipt PDF to the cache and opens the share sheet. */
 export async function shareReceipt(api: CustomerApi, jobId: string): Promise<void> {
   const link = await api.receipt(jobId);
   const target = new File(
@@ -28,7 +48,10 @@ export function JobDetailScreen({
   share?: typeof shareReceipt;
 }) {
   const { api } = useSession();
-  const [job, reload] = useLoad(() => Promise.all([api.job(id), api.estimates(id)]), [api, id]);
+  const [job, reload] = useLoad(
+    () => Promise.all([api.job(id), api.estimates(id), api.payments()]),
+    [api, id],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +80,8 @@ export function JobDetailScreen({
         <Button label="Try again" variant="secondary" onPress={reload} />
       </Screen>
     );
-  const [j, estimates] = job.data;
+  const [j, estimates, allPayments] = job.data;
+  const payments = allPayments.filter((p) => p.jobNumber === j.jobNumber);
   const current = estimates.find((e) => e.status !== 'SUPERSEDED');
   return (
     <Screen>
@@ -85,6 +109,22 @@ export function JobDetailScreen({
           {new Date(t.at).toLocaleString()} — {t.label}
           {t.message ? `: ${t.message}` : ''}
         </Body>
+      ))}
+      {payments.length > 0 ? <Title>Payments</Title> : null}
+      {payments.map((p) => (
+        <View key={p.id} style={{ gap: 4 }}>
+          <Body>
+            {p.receiptNumber}: {formatMoney(p.amount, p.currency)}
+            {p.status === 'REVERSED' ? ' (reversed)' : ''}
+          </Body>
+          <Button
+            label={`Share receipt ${p.receiptNumber}`}
+            variant="secondary"
+            onPress={() =>
+              void sharePaymentReceipt(api, p.id).catch((e: unknown) => setError(errorMessage(e)))
+            }
+          />
+        </View>
       ))}
       <ErrorText>{error}</ErrorText>
       <Button label="Download / share receipt" onPress={() => void onShare()} busy={busy} />

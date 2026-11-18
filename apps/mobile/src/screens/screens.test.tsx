@@ -172,6 +172,7 @@ describe('JobDetailScreen', () => {
     const { api } = fakeApi((path) => {
       if (path === '/customer/auth/refresh') return json(200, TOKENS);
       if (path === '/customer/jobs/job-1/estimates') return json(200, []);
+      if (path === '/customer/payments') return json(200, []);
       return json(200, JOB);
     }, 'stored-refresh-token-000000');
     const share = jest.fn(() => Promise.resolve());
@@ -230,6 +231,19 @@ describe('EstimateCard on the job screen', () => {
     let decided: Record<string, unknown> | null = null;
     const { api } = fakeApi((path, init) => {
       if (path === '/customer/auth/refresh') return json(200, TOKENS);
+      if (path === '/customer/payments')
+        return json(200, [
+          {
+            id: 'pay-1',
+            receiptNumber: 'RCPT-A1-2026-000003',
+            jobNumber: 'A1-2026-000007',
+            currency: 'USD',
+            amount: '250.0000',
+            method: 'CASH',
+            receivedAt: '2026-11-18T10:00:00.000Z',
+            status: 'RECORDED',
+          },
+        ]);
       if (path === '/customer/jobs/job-1/estimates')
         return json(200, [decided ? { ...ESTIMATE, status: 'APPROVED' } : ESTIMATE]);
       if (path === '/customer/estimates/est-1/decision') {
@@ -244,6 +258,8 @@ describe('EstimateCard on the job screen', () => {
       </SessionProvider>,
     );
     expect(await screen.findByText(/Amount to approve: \$1,000\.00/)).toBeOnTheScreen();
+    expect(screen.getByText('RCPT-A1-2026-000003: $250.00')).toBeOnTheScreen();
+    expect(screen.getByText('RCPT-A1-2026-000003: $250.00')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Approve estimate' })).toBeDisabled();
     await fireEvent.press(
       screen.getByRole('checkbox', { name: 'I have read and accept the terms' }),

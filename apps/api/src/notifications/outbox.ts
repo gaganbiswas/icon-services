@@ -7,7 +7,8 @@ export type NotificationEvent =
   | 'REPAIR_COMPLETED'
   | 'READY_FOR_DELIVERY'
   | 'ESTIMATE_READY'
-  | 'ESTIMATE_DECISION_RECORDED';
+  | 'ESTIMATE_DECISION_RECORDED'
+  | 'PAYMENT_RECEIVED';
 
 export interface OutboxEntry {
   readonly organizationId: string;
