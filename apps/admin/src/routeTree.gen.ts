@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MyJobsRouteImport } from './routes/my-jobs'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as CustomersIndexRouteImport } from './routes/customers/index'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$customerId'
@@ -19,6 +20,7 @@ import { Route as CustomersNewRouteImport } from './routes/customers/new'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as JobsNewRouteImport } from './routes/jobs/new'
+import { Route as NotificationsIndexRouteImport } from './routes/notifications/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -33,6 +35,11 @@ const ChangePasswordRoute = ChangePasswordRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyJobsRoute = MyJobsRouteImport.update({
+  id: '/my-jobs',
+  path: '/my-jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetPasswordRoute = SetPasswordRouteImport.update({
@@ -70,11 +77,17 @@ const JobsNewRoute = JobsNewRouteImport.update({
   path: '/jobs/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsIndexRoute = NotificationsIndexRouteImport.update({
+  id: '/notifications/',
+  path: '/notifications/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/my-jobs': typeof MyJobsRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -82,11 +95,13 @@ export interface FileRoutesByFullPath {
   '/jobs/new': typeof JobsNewRoute
   '/customers/': typeof CustomersIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/notifications/': typeof NotificationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/my-jobs': typeof MyJobsRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -94,12 +109,14 @@ export interface FileRoutesByTo {
   '/jobs/new': typeof JobsNewRoute
   '/customers': typeof CustomersIndexRoute
   '/jobs': typeof JobsIndexRoute
+  '/notifications': typeof NotificationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/my-jobs': typeof MyJobsRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -107,6 +124,7 @@ export interface FileRoutesById {
   '/jobs/new': typeof JobsNewRoute
   '/customers/': typeof CustomersIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/notifications/': typeof NotificationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/change-password'
     | '/login'
+    | '/my-jobs'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -121,11 +140,13 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/customers/'
     | '/jobs/'
+    | '/notifications/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/change-password'
     | '/login'
+    | '/my-jobs'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -133,11 +154,13 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/customers'
     | '/jobs'
+    | '/notifications'
   id:
     | '__root__'
     | '/'
     | '/change-password'
     | '/login'
+    | '/my-jobs'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -145,12 +168,14 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/customers/'
     | '/jobs/'
+    | '/notifications/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
+  MyJobsRoute: typeof MyJobsRoute
   SetPasswordRoute: typeof SetPasswordRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   CustomersNewRoute: typeof CustomersNewRoute
@@ -158,6 +183,7 @@ export interface RootRouteChildren {
   JobsNewRoute: typeof JobsNewRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
+  NotificationsIndexRoute: typeof NotificationsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -181,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-jobs': {
+      id: '/my-jobs'
+      path: '/my-jobs'
+      fullPath: '/my-jobs'
+      preLoaderRoute: typeof MyJobsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/set-password': {
@@ -232,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications/': {
+      id: '/notifications/'
+      path: '/notifications'
+      fullPath: '/notifications/'
+      preLoaderRoute: typeof NotificationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -239,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
+  MyJobsRoute: MyJobsRoute,
   SetPasswordRoute: SetPasswordRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   CustomersNewRoute: CustomersNewRoute,
@@ -246,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   JobsNewRoute: JobsNewRoute,
   CustomersIndexRoute: CustomersIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
+  NotificationsIndexRoute: NotificationsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

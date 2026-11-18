@@ -18,7 +18,8 @@
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs:lifecycle": "bun src/docs/write-lifecycle-doc.ts"
   },
   "dependencies": {
     "libphonenumber-js": "1.13.16",

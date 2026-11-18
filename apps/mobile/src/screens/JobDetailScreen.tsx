@@ -66,6 +66,16 @@ export function JobDetailScreen({
       </Body>
       <Body muted>Branch: {j.branch.name}</Body>
       <Body>Problem: {j.complaint}</Body>
+      {j.updates.length > 0 ? (
+        <>
+          <Title>Updates from the service centre</Title>
+          {j.updates.map((u) => (
+            <Body key={u.at}>
+              {new Date(u.at).toLocaleString()} — {u.message}
+            </Body>
+          ))}
+        </>
+      ) : null}
       <Title>Progress</Title>
       {j.timeline.map((t) => (
         <Body key={t.at + t.status}>

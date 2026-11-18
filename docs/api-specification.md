@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 3 (2026-11-18).
+Updated: Phase 4 (2026-11-18).
 
 ## Conventions
 
@@ -67,6 +67,27 @@ different body → 422 `IDEMPOTENCY_KEY_REUSED`; a concurrent duplicate still in
 | GET | `/jobs/:id` | `jobs.read` | |
 | POST | `/jobs/:id/receipt?layout=A4\|THERMAL_80` | `jobs.read` | Signed URL (5 min) to the stored PDF; first call renders, later calls reuse |
 | GET | `/jobs/:id/attachments/:fileId/url` | `jobs.read` | Signed URL |
+
+## Phase 4 endpoints (job lifecycle, ADR 0013)
+
+Transition rules: [`docs/job-lifecycle.md`](job-lifecycle.md) (generated from the code). Technicians without `jobs.assign`
+may only change jobs assigned to them (`403 NOT_ASSIGNED`).
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/jobs?assignedToMe=true` | `jobs.read` | Technician workspace list |
+| GET | `/jobs/:id/workspace` | `jobs.read` | Assignments, diagnoses, work logs (internal ones only with `jobs.internal_notes.read`), completion, allowed transitions |
+| POST | `/jobs/:id/status-transitions` | `jobs.transition` | `{to, version, reason?, customerMessage?}`; errors `INVALID_TRANSITION`, `REASON_REQUIRED`, `ESTIMATE_APPROVAL_REQUIRED`, `COMPLETION_REQUIRED`, `USE_RECEIVE_ACTION`, `USE_DELIVERY_WORKFLOW`, `VERSION_CONFLICT` |
+| POST | `/jobs/:id/receive` | `jobs.update` | App requests: `AWAITING_DEVICE → RECEIVED` with intake details |
+| POST | `/jobs/:id/completion` | `jobs.transition` | `QUALITY_CHECK → REPAIR_COMPLETED`; repair summary + all QC items passed |
+| GET | `/jobs/:id/assignable-technicians` | `jobs.assign` | Active staff with `worklogs.write` in the job's branch |
+| POST | `/jobs/:id/assignments` | `jobs.assign` | `{technicianUserId, note?}` |
+| DELETE | `/jobs/:id/assignments/:assignmentId?reason=` | `jobs.assign` | Ends the assignment (history kept) |
+| POST | `/jobs/:id/diagnoses` | `diagnosis.write` | `internalNotes` needs `jobs.internal_notes.write` |
+| POST | `/jobs/:id/work-logs` | `worklogs.write` | `visibility` INTERNAL (needs `jobs.internal_notes.write`) or CUSTOMER (notifies customer) |
+| POST | `/jobs/:id/attachments` | `worklogs.write` | Attach an uploaded file |
+| GET | `/notifications?status=&jobId=` | `notifications.read` | Branch-scoped notification centre |
+| POST | `/notifications/:id/retry` | `notifications.retry` | FAILED/DEAD → PENDING (audited) |
 
 ### Customer API (customer access token; identity from token only)
 

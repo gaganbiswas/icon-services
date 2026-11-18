@@ -1,4 +1,4 @@
-import type { DocumentLink, JobDetail } from '@icon/contracts';
+import type { DocumentLink, JobDetail, JobWorkspace, Notification, Page } from '@icon/contracts';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -6,6 +6,12 @@ import { AppShell } from '../../components/AppShell';
 import { RequireAuth } from '../../components/RequireAuth';
 import { ResourceView } from '../../components/ResourceView';
 import { StatusBadge, statusLabel } from '../../components/StatusBadge';
+import { Tabs } from '../../components/Tabs';
+import { AssignmentsPanel } from '../../components/job/AssignmentsPanel';
+import { ReceivePanel } from '../../components/job/ReceivePanel';
+import { StatusPanel } from '../../components/job/StatusPanel';
+import { CompletionPanel, DiagnosisPanel, WorkLogPanel } from '../../components/job/WorkPanels';
+import { useCan } from '../../lib/permissions';
 import { useAuth } from '../../lib/auth';
 import { formMessage } from '../../lib/form-errors';
 import { useResource } from '../../lib/use-resource';
@@ -35,7 +41,22 @@ function openBlankTab(): Window | null {
 export function JobDetailPage() {
   const { jobId } = Route.useParams();
   const { client } = useAuth();
-  const job = useResource(() => client.get<JobDetail>(`/jobs/${jobId}`), [client, jobId]);
+  const [revision, setRevision] = useState(0);
+  const refresh = () => setRevision((n) => n + 1);
+  const job = useResource(() => client.get<JobDetail>(`/jobs/${jobId}`), [client, jobId, revision]);
+  const workspace = useResource(
+    () => client.get<JobWorkspace>(`/jobs/${jobId}/workspace`),
+    [client, jobId, revision],
+  );
+  const canReceive = useCan('jobs.update');
+  const canSeeNotifications = useCan('notifications.read');
+  const notifications = useResource(
+    () =>
+      canSeeNotifications
+        ? client.get<Page<Notification>>('/notifications', { jobId, pageSize: 50 })
+        : Promise.resolve(null),
+    [client, jobId, revision, canSeeNotifications],
+  );
   const [printing, setPrinting] = useState<string | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
 
@@ -94,98 +115,207 @@ export function JobDetailPage() {
       ) : null}
       <ResourceView resource={job}>
         {(j) => (
-          <>
-            <section className="card" aria-labelledby="job-heading">
-              <h2 id="job-heading">
-                {j.jobNumber} <StatusBadge status={j.status} />
-              </h2>
-              <dl className="summary">
-                <dt>Customer</dt>
-                <dd>
-                  {j.customer.name} ({j.customer.customerCode}) · {j.customer.phone}
-                </dd>
-                <dt>Device</dt>
-                <dd>
-                  {j.asset.category}: {j.asset.brand} {j.asset.model}
-                  {j.asset.serialNumber ? ` · S/N ${j.asset.serialNumber}` : ''}
-                </dd>
-                <dt>Branch</dt>
-                <dd>{j.branch.name}</dd>
-                <dt>Service</dt>
-                <dd>
-                  {TYPE_LABELS[j.serviceType]} · {MODE_LABELS[j.serviceMode]}
-                </dd>
-                <dt>Channel</dt>
-                <dd>{j.channel === 'STAFF' ? 'Counter intake' : 'Customer app'}</dd>
-                <dt>Received</dt>
-                <dd>
-                  {j.receivedAt
-                    ? new Date(j.receivedAt).toLocaleString()
-                    : 'Device not yet received'}
-                </dd>
-              </dl>
-            </section>
-            <section className="card">
-              <h2>Complaint</h2>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{j.complaint}</p>
-              <h3>Accessories received</h3>
-              <p>{j.accessoriesReceived.length ? j.accessoriesReceived.join(', ') : 'None'}</p>
-              {j.conditionNotes ? (
-                <>
-                  <h3>Condition at intake</h3>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{j.conditionNotes}</p>
-                </>
-              ) : null}
-              {j.intakeChecklist.length ? (
-                <>
-                  <h3>Intake checklist</h3>
-                  <ul>
-                    {j.intakeChecklist.map((c) => (
-                      <li key={c.item}>
-                        {c.checked ? 'Yes' : 'No'} — {c.item}
-                        {c.note ? ` (${c.note})` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-            </section>
-            {j.attachments.length ? (
-              <section className="card">
-                <h2>Photos and files</h2>
-                <ul>
-                  {j.attachments.map((a) => (
-                    <li key={a.id}>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => void openAttachment(a.fileId)}
-                      >
-                        {a.originalName}
-                      </button>{' '}
-                      <span className="muted small">
-                        {a.category === 'CUSTOMER_PHOTO' ? 'from customer' : 'intake'} ·{' '}
-                        {a.visibility === 'CUSTOMER' ? 'customer-visible' : 'staff only'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-            <section className="card">
-              <h2>Status history</h2>
-              <ol>
-                {j.statusHistory.map((h) => (
-                  <li key={h.createdAt + h.toStatus}>
-                    {statusLabel(h.toStatus)} — {new Date(h.createdAt).toLocaleString()}
-                    {h.reason ? ` · ${h.reason}` : ''}
-                  </li>
-                ))}
-              </ol>
-            </section>
-          </>
+          <Tabs
+            tabs={[
+              {
+                id: 'overview',
+                label: 'Overview',
+                content: <Overview j={j} onOpenAttachment={(id) => void openAttachment(id)} />,
+              },
+              {
+                id: 'work',
+                label: 'Work',
+                content: (
+                  <ResourceView resource={workspace}>
+                    {(ws) => (
+                      <>
+                        {j.status === 'AWAITING_DEVICE' && canReceive ? (
+                          <section className="card" aria-labelledby="receive-heading">
+                            <h2 id="receive-heading">Receive device</h2>
+                            <ReceivePanel job={j} onReceived={refresh} />
+                          </section>
+                        ) : null}
+                        <section className="card" aria-labelledby="status-heading">
+                          <h2 id="status-heading">Status</h2>
+                          <p>
+                            Current: <StatusBadge status={j.status} />
+                          </p>
+                          <StatusPanel job={j} workspace={ws} onChanged={refresh} />
+                        </section>
+                        <section className="card" aria-labelledby="assign-heading">
+                          <h2 id="assign-heading">Technicians</h2>
+                          <AssignmentsPanel jobId={j.id} workspace={ws} onChanged={refresh} />
+                        </section>
+                        <section className="card" aria-labelledby="diag-heading">
+                          <h2 id="diag-heading">Diagnosis</h2>
+                          <DiagnosisPanel jobId={j.id} workspace={ws} onChanged={refresh} />
+                        </section>
+                        <section className="card" aria-labelledby="log-heading">
+                          <h2 id="log-heading">Work log and customer updates</h2>
+                          <WorkLogPanel jobId={j.id} workspace={ws} onChanged={refresh} />
+                        </section>
+                        <section className="card" aria-labelledby="done-heading">
+                          <h2 id="done-heading">Repair completion</h2>
+                          <CompletionPanel job={j} workspace={ws} onChanged={refresh} />
+                        </section>
+                      </>
+                    )}
+                  </ResourceView>
+                ),
+              },
+              { id: 'timeline', label: 'Timeline', content: <Timeline j={j} /> },
+              ...(canSeeNotifications
+                ? [
+                    {
+                      id: 'notifications',
+                      label: 'Notifications',
+                      content: (
+                        <ResourceView resource={notifications}>
+                          {(page) => <NotificationList items={page?.items ?? []} />}
+                        </ResourceView>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
       </ResourceView>
     </AppShell>
+  );
+}
+
+function Overview({
+  j,
+  onOpenAttachment,
+}: {
+  j: JobDetail;
+  onOpenAttachment: (fileId: string) => void;
+}) {
+  return (
+    <>
+      <section className="card" aria-labelledby="job-heading">
+        <h2 id="job-heading">
+          {j.jobNumber} <StatusBadge status={j.status} />
+        </h2>
+        <dl className="summary">
+          <dt>Customer</dt>
+          <dd>
+            {j.customer.name} ({j.customer.customerCode}) · {j.customer.phone}
+          </dd>
+          <dt>Device</dt>
+          <dd>
+            {j.asset.category}: {j.asset.brand} {j.asset.model}
+            {j.asset.serialNumber ? ` · S/N ${j.asset.serialNumber}` : ''}
+          </dd>
+          <dt>Branch</dt>
+          <dd>{j.branch.name}</dd>
+          <dt>Service</dt>
+          <dd>
+            {TYPE_LABELS[j.serviceType]} · {MODE_LABELS[j.serviceMode]}
+          </dd>
+          <dt>Channel</dt>
+          <dd>{j.channel === 'STAFF' ? 'Counter intake' : 'Customer app'}</dd>
+          <dt>Received</dt>
+          <dd>
+            {j.receivedAt ? new Date(j.receivedAt).toLocaleString() : 'Device not yet received'}
+          </dd>
+        </dl>
+      </section>
+      <section className="card">
+        <h2>Complaint</h2>
+        <p style={{ whiteSpace: 'pre-wrap' }}>{j.complaint}</p>
+        <h3>Accessories received</h3>
+        <p>{j.accessoriesReceived.length ? j.accessoriesReceived.join(', ') : 'None'}</p>
+        {j.conditionNotes ? (
+          <>
+            <h3>Condition at intake</h3>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{j.conditionNotes}</p>
+          </>
+        ) : null}
+        {j.intakeChecklist.length ? (
+          <>
+            <h3>Intake checklist</h3>
+            <ul>
+              {j.intakeChecklist.map((c) => (
+                <li key={c.item}>
+                  {c.checked ? 'Yes' : 'No'} — {c.item}
+                  {c.note ? ` (${c.note})` : ''}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </section>
+      {j.attachments.length ? (
+        <section className="card">
+          <h2>Photos and files</h2>
+          <ul>
+            {j.attachments.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => onOpenAttachment(a.fileId)}
+                >
+                  {a.originalName}
+                </button>{' '}
+                <span className="muted small">
+                  {a.category === 'CUSTOMER_PHOTO' ? 'from customer' : 'intake'} ·{' '}
+                  {a.visibility === 'CUSTOMER' ? 'customer-visible' : 'staff only'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function Timeline({ j }: { j: JobDetail }) {
+  return (
+    <section className="card">
+      <h2>Status history</h2>
+      <ol>
+        {j.statusHistory.map((h) => (
+          <li key={h.createdAt + h.toStatus}>
+            {statusLabel(h.toStatus)} — {new Date(h.createdAt).toLocaleString()}
+            {h.reason ? ` · ${h.reason}` : ''}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+const DELIVERY_LABELS: Record<string, string> = {
+  ACCEPTED: 'accepted by provider (not yet confirmed delivered)',
+  FAILED: 'failed',
+  SKIPPED_NO_CONSENT: 'skipped — no consent',
+  SKIPPED_NO_ADDRESS: 'skipped — no address',
+  DELIVERED: 'delivered',
+  READ: 'read',
+};
+
+export function NotificationList({ items }: { items: Notification[] }) {
+  if (items.length === 0) return <p className="muted">No notifications.</p>;
+  return (
+    <ul>
+      {items.map((n) => (
+        <li key={n.id}>
+          <strong>{n.eventType.replace(/_/g, ' ').toLowerCase()}</strong> — {n.status.toLowerCase()}{' '}
+          · attempts {n.attempts}
+          <ul>
+            {n.deliveries.map((d) => (
+              <li key={d.createdAt + d.channel} className="small">
+                {d.channel}: {DELIVERY_LABELS[d.status] ?? d.status}
+                {d.errorCode ? ` (${d.errorCode})` : ''}
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
   );
 }

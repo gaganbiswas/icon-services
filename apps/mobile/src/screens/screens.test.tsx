@@ -18,6 +18,7 @@ const JOB = {
   device: { category: 'Printer', brand: 'Inkly', model: 'P200', serialNumber: null },
   complaint: 'Paper jams',
   submittedAt: '2026-11-18T10:00:00.000Z',
+  updates: [{ message: 'Replacement part ordered', at: '2026-11-18T12:00:00.000Z' }],
   timeline: [
     {
       status: 'REQUEST_RECEIVED',
@@ -180,6 +181,7 @@ describe('JobDetailScreen', () => {
     );
     expect(await screen.findByText('Status: Request received')).toBeOnTheScreen();
     expect(screen.queryByText(/AWAITING_DEVICE/)).toBeNull();
+    expect(screen.getByText(/Replacement part ordered/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Download / share receipt' }));
     await waitFor(() => expect(share).toHaveBeenCalledWith(api, 'job-1'));
   });

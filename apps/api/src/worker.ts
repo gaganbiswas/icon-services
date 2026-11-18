@@ -18,13 +18,17 @@ async function main(): Promise<void> {
   const env = parseEnv(process.env);
   const logger = createLogger(env);
   const app = await NestFactory.createApplicationContext(WorkerModule.forRoot(env), { logger });
-  app.enableShutdownHooks();
+  // Signals are handled here (not by Nest shutdown hooks) so the current batch
+  // finishes before resources close; interrupted batches would also be
+  // reclaimed after their lease expires.
   const dispatcher = app.get(NotificationDispatcher);
   const log = new Logger('Worker');
 
   let stopping = false;
+  let wake: (() => void) | null = null;
   const stop = () => {
     stopping = true;
+    wake?.();
   };
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
@@ -37,7 +41,15 @@ async function main(): Promise<void> {
     } catch (error) {
       log.error(`Dispatch cycle failed: ${error instanceof Error ? error.name : 'unknown'}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, env.NOTIFICATION_POLL_INTERVAL_MS));
+    if (stopping) break;
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, env.NOTIFICATION_POLL_INTERVAL_MS);
+      wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+    });
+    wake = null;
   }
   await app.close();
   log.log('Worker stopped');

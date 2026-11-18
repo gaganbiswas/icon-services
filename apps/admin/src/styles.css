@@ -308,3 +308,25 @@ fieldset {
   gap: 0.5rem;
   justify-items: start;
 }
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-block: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+[role='tab'][aria-selected='true'] {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.job-cards {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.75rem;
+}

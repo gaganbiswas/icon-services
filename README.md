@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 3 complete — customers, devices, job intake with printable receipts (staff web) and
-> customer sign-in / complaint submission (Android app). Job lifecycle starts in Phase 4.
+> **Status:** Phase 4 complete — job lifecycle with technician workspace, assignments, diagnosis, work logs,
+> customer updates and queued notifications (mock providers). Estimates start in Phase 5.
 
 ## Repository layout
 
@@ -41,6 +41,9 @@ bun run db:migrate            # apply Prisma migrations to the dev database
 bun run db:seed:dev           # dev-only: placeholder org/branch + Super Admin from SEED_ADMIN_*
 bun run dev                   # API :4000, admin :5173, web :3000, Expo (Metro)
 ```
+
+Notifications are sent by a separate worker process (mock WhatsApp/email providers until Phase 10):
+`bun run --filter @icon/api build && bun run --filter @icon/api start:worker`.
 
 Sign in to the admin panel at http://localhost:5173 with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 New staff are created via `POST /api/v1/users`; the response contains a one-time set-up token, used at

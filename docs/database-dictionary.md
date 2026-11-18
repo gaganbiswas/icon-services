@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 3 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 4 (2026-11-18).
 
 ## Conventions
 
@@ -86,6 +86,17 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `customer_otp_challenges` | HMAC-SHA256 code hash, attempts, expiry, consumed time |
 | `auth_sessions` (changed) | `subject_type` STAFF/CUSTOMER; exactly one of `user_id` / `customer_id` (CHECK) |
 
+## Tables (Phase 4, ADR 0013)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `job_assignments` | Assignment history; ended (never deleted). Partial unique index: one active row per (job, technician) |
+| `diagnoses` | Symptom, findings, root cause, recommendation, staff-only `internal_notes`. Append-only (trigger) |
+| `work_logs` | Work entries / notes with `visibility` INTERNAL or CUSTOMER (≤ 500 chars), optional duration 1–1440 min. Append-only (trigger) |
+| `service_jobs` (changed) | Completion record `repair_summary`, `qc_checklist`, `completed_by_id`, `completed_at` — all set or all null (CHECK) |
+| `notification_outbox` | Notification intent written in the business transaction; unique `idempotency_key`; status PENDING/PROCESSING/COMPLETED/FAILED/DEAD/SKIPPED; `attempts`, `next_attempt_at`, `locked_until` lease; `branch_id` for scoping |
+| `notification_deliveries` | Per channel/attempt result: ACCEPTED (provider took it — not delivery), FAILED, SKIPPED_NO_CONSENT, SKIPPED_NO_ADDRESS; DELIVERED/READ only from provider callbacks (Phase 10). Unique (outbox, channel, attempt) |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -98,6 +109,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase4_lifecycle_work_notifications`, `…_phase4_outbox_branch` | Phase 4 tables, constraints and append-only triggers |
 | `…_phase3_customers_assets_intake` | Phase 3 tables, `pg_trgm`, consent partial unique index, append-only status-history and documents triggers |
 
 Integration tests use a separate database whose name must end in `_test` (`TEST_DATABASE_URL`); they truncate it.

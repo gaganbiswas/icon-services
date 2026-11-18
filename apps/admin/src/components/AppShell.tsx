@@ -17,6 +17,8 @@ export function AppShell({
   const canJobs = useCan('jobs.read');
   const canCustomers = useCan('customers.read');
   const canCreateJob = useCan('jobs.create');
+  const canWork = useCan('worklogs.write');
+  const canNotifications = useCan('notifications.read');
   return (
     <div className="shell">
       <header className="topbar">
@@ -32,6 +34,13 @@ export function AppShell({
                 </Link>
               </li>
             ) : null}
+            {canWork ? (
+              <li>
+                <Link to="/my-jobs" activeProps={{ 'aria-current': 'page' }}>
+                  My jobs
+                </Link>
+              </li>
+            ) : null}
             {canCreateJob ? (
               <li>
                 <Link to="/jobs/new" activeProps={{ 'aria-current': 'page' }}>
@@ -43,6 +52,13 @@ export function AppShell({
               <li>
                 <Link to="/customers" activeProps={{ 'aria-current': 'page' }}>
                   Customers
+                </Link>
+              </li>
+            ) : null}
+            {canNotifications ? (
+              <li>
+                <Link to="/notifications" activeProps={{ 'aria-current': 'page' }}>
+                  Notifications
                 </Link>
               </li>
             ) : null}
