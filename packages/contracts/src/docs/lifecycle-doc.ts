@@ -5,7 +5,7 @@ const GUARD_TEXT: Record<string, string> = {
   APPROVED_ESTIMATE: 'current estimate approved by the customer',
   REJECTED_ESTIMATE: 'current estimate rejected by the customer (return unrepaired)',
   COMPLETION_RECORD: 'repair summary + passed QC via completion action',
-  DELIVERY_WORKFLOW: 'delivery hand-over workflow only (Phase 9)',
+  DELIVERY_WORKFLOW: 'delivery actions only (dispatch / hand-over / failed attempt)',
   RECEIVE_ACTION: '“Receive device” action only',
   RESUME_TARGET: 'only the status held from',
 };

@@ -17,6 +17,7 @@ import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as CustomersIndexRouteImport } from './routes/customers/index'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$customerId'
 import { Route as CustomersNewRouteImport } from './routes/customers/new'
+import { Route as DeliveriesIndexRouteImport } from './routes/deliveries/index'
 import { Route as InventoryIndexRouteImport } from './routes/inventory/index'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
@@ -64,6 +65,11 @@ const CustomersNewRoute = CustomersNewRouteImport.update({
   path: '/customers/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveriesIndexRoute = DeliveriesIndexRouteImport.update({
+  id: '/deliveries/',
+  path: '/deliveries/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InventoryIndexRoute = InventoryIndexRouteImport.update({
   id: '/inventory/',
   path: '/inventory/',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
   '/customers/': typeof CustomersIndexRoute
+  '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
   '/customers': typeof CustomersIndexRoute
+  '/deliveries': typeof DeliveriesIndexRoute
   '/inventory': typeof InventoryIndexRoute
   '/jobs': typeof JobsIndexRoute
   '/notifications': typeof NotificationsIndexRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
   '/customers/': typeof CustomersIndexRoute
+  '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/reports/collections'
     | '/customers/'
+    | '/deliveries/'
     | '/inventory/'
     | '/jobs/'
     | '/notifications/'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/reports/collections'
     | '/customers'
+    | '/deliveries'
     | '/inventory'
     | '/jobs'
     | '/notifications'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/reports/collections'
     | '/customers/'
+    | '/deliveries/'
     | '/inventory/'
     | '/jobs/'
     | '/notifications/'
@@ -207,6 +219,7 @@ export interface RootRouteChildren {
   JobsNewRoute: typeof JobsNewRoute
   ReportsCollectionsRoute: typeof ReportsCollectionsRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
+  DeliveriesIndexRoute: typeof DeliveriesIndexRoute
   InventoryIndexRoute: typeof InventoryIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
   NotificationsIndexRoute: typeof NotificationsIndexRoute
@@ -270,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deliveries/': {
+      id: '/deliveries/'
+      path: '/deliveries'
+      fullPath: '/deliveries/'
+      preLoaderRoute: typeof DeliveriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inventory/': {
       id: '/inventory/'
       path: '/inventory'
@@ -327,6 +347,7 @@ const rootRouteChildren: RootRouteChildren = {
   JobsNewRoute: JobsNewRoute,
   ReportsCollectionsRoute: ReportsCollectionsRoute,
   CustomersIndexRoute: CustomersIndexRoute,
+  DeliveriesIndexRoute: DeliveriesIndexRoute,
   InventoryIndexRoute: InventoryIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
   NotificationsIndexRoute: NotificationsIndexRoute,

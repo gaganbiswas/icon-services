@@ -8,6 +8,7 @@ import { ResourceView } from '../../components/ResourceView';
 import { StatusBadge, statusLabel } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { AssignmentsPanel } from '../../components/job/AssignmentsPanel';
+import { DeliveryPanel } from '../../components/job/DeliveryPanel';
 import { EstimatesPanel } from '../../components/job/EstimatesPanel';
 import { PartsPanel } from '../../components/job/PartsPanel';
 import { PaymentsPanel } from '../../components/job/PaymentsPanel';
@@ -55,6 +56,7 @@ export function JobDetailPage() {
   const canSeeNotifications = useCan('notifications.read');
   const canSeeEstimates = useCan('estimates.read');
   const canSeePayments = useCan('payments.read');
+  const canSeeDeliveries = useCan('deliveries.read');
   const notifications = useResource(
     () =>
       canSeeNotifications
@@ -179,6 +181,15 @@ export function JobDetailPage() {
               },
               ...(canSeePayments
                 ? [{ id: 'payments', label: 'Payments', content: <PaymentsPanel job={j} /> }]
+                : []),
+              ...(canSeeDeliveries
+                ? [
+                    {
+                      id: 'delivery',
+                      label: 'Delivery',
+                      content: <DeliveryPanel job={j} onChanged={refresh} />,
+                    },
+                  ]
                 : []),
               ...(canSeeEstimates
                 ? [

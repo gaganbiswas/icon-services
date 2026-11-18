@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 8 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 9 (2026-11-18).
 
 ## Conventions
 
@@ -123,6 +123,13 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `payments` | Money received on the customer's account; unique `(organization_id, receipt_number)`; amount > 0; reference required except cash; `allocated_total` (0 until Phase 7 invoices) + `refunded_total` ≤ amount; reversed ⇒ nothing allocated or refunded. **Trigger:** core fields immutable, no deletes, reversed rows frozen |
 | `payment_refunds` | Append-only refunds with own number, method, reference, reason, approver |
 
+## Tables (Phase 9, ADR 0017)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `deliveries` | One per dispatch / hand-over; unique `(organization_id, challan_number)`; partial unique indexes: one DISPATCHED and one COMPLETED per job; CHECK: completed ⇒ recipient, relationship, proof (photo file for PHOTO_PROOF), authorization note unless SELF, balance snapshot, delivered time/by; override reason ⇔ approver; FAILED ⇒ reason. **Trigger:** completed/failed rows final, no deletes |
+| `delivery_items` | Items handed back (description, returned, condition); append-only |
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -135,6 +142,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase9_delivery` | Deliveries, items; constraints and triggers |
 | `…_phase8_payments` | Payments and refunds; immutability triggers |
 | `…_phase6_inventory` | Parts, suppliers, branch stock, ledger, job parts; constraints and append-only trigger |
 | `…_phase5_estimates` | Estimates, lines, decisions, links; immutability triggers |

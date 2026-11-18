@@ -12,6 +12,7 @@
 // Phase 5: estimates, lines, customer decisions, approval links.
 // Phase 6: parts, suppliers, branch stock, stock ledger, job parts.
 // Phase 8: payments, refunds (allocation to invoices arrives with Phase 7).
+// Phase 9: deliveries, delivery items, challans.
 
 generator client {
   provider            = "prisma-client"
@@ -710,6 +711,7 @@ model ServiceJob {
   workLogs      WorkLog[]
   estimates     Estimate[]
   parts         JobPart[]
+  deliveries    Delivery[]
 
   @@unique([organizationId, jobNumber])
   @@unique([organizationId, id])
@@ -1319,4 +1321,94 @@ model PaymentRefund {
   @@index([paymentId])
   @@index([organizationId, branchId, createdAt])
   @@map("payment_refunds")
+}
+
+// ---------------------------------------------------------------------------
+// Delivery (Phase 9, ADR 0017)
+// ---------------------------------------------------------------------------
+
+enum DeliveryMode {
+  CUSTOMER_PICKUP
+  HOME_DELIVERY
+  ON_SITE_RETURN
+  OTHER
+
+  @@map("delivery_mode")
+}
+
+enum DeliveryStatus2 {
+  DISPATCHED
+  COMPLETED
+  FAILED
+
+  @@map("delivery_record_status")
+}
+
+enum RecipientRelationship {
+  SELF
+  AUTHORIZED_PERSON
+  FAMILY
+  COLLEAGUE
+  OTHER
+
+  @@map("recipient_relationship")
+}
+
+enum ProofMethod {
+  SIGNED_CHALLAN
+  PHOTO_PROOF
+
+  @@map("proof_method")
+}
+
+model Delivery {
+  id                String                 @id @default(uuid(7)) @db.Uuid
+  organizationId    String                 @map("organization_id") @db.Uuid
+  branchId          String                 @map("branch_id") @db.Uuid
+  jobId             String                 @map("job_id") @db.Uuid
+  challanNumber     String                 @map("challan_number") @db.VarChar(40)
+  mode              DeliveryMode
+  status            DeliveryStatus2
+  /// Address snapshot for home delivery / on-site return.
+  address           Json?
+  dispatchedAt      DateTime?              @map("dispatched_at") @db.Timestamptz(3)
+  dispatchedById    String?                @map("dispatched_by_id") @db.Uuid
+  recipientName     String?                @map("recipient_name") @db.VarChar(200)
+  relationship      RecipientRelationship?
+  authorizationNote String?                @map("authorization_note") @db.VarChar(500)
+  checklist         Json?
+  conditionNotes    String?                @map("condition_notes") @db.VarChar(1000)
+  proofMethod       ProofMethod?           @map("proof_method")
+  proofFileId       String?                @map("proof_file_id") @db.Uuid
+  /// Balance snapshot at hand-over (interim basis until invoicing).
+  balanceSnapshot   Json?                  @map("balance_snapshot")
+  dueOverrideReason String?                @map("due_override_reason") @db.VarChar(500)
+  dueOverrideById   String?                @map("due_override_by_id") @db.Uuid
+  deliveredAt       DateTime?              @map("delivered_at") @db.Timestamptz(3)
+  deliveredById     String?                @map("delivered_by_id") @db.Uuid
+  failedReason      String?                @map("failed_reason") @db.VarChar(500)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  job   ServiceJob     @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  items DeliveryItem[]
+
+  @@unique([organizationId, challanNumber])
+  @@index([jobId])
+  @@index([organizationId, branchId, deliveredAt])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  deliveryId  String   @map("delivery_id") @db.Uuid
+  description String   @db.VarChar(200)
+  returned    Boolean
+  condition   String?  @db.VarChar(300)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryId])
+  @@map("delivery_items")
 }

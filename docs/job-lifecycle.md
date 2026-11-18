@@ -38,11 +38,11 @@ require `jobs.transition`, and — for technicians without `jobs.assign` — an 
 | QUALITY_CHECK | REPAIR_COMPLETED | — | — | repair summary + passed QC via completion action |
 | QUALITY_CHECK | REPAIR_IN_PROGRESS | required | — | — |
 | REPAIR_COMPLETED | READY_FOR_DELIVERY | — | — | — |
-| READY_FOR_DELIVERY | OUT_FOR_DELIVERY | — | — | — |
-| READY_FOR_DELIVERY | DELIVERED | — | — | delivery hand-over workflow only (Phase 9) |
+| READY_FOR_DELIVERY | OUT_FOR_DELIVERY | — | — | delivery actions only (dispatch / hand-over / failed attempt) |
+| READY_FOR_DELIVERY | DELIVERED | — | — | delivery actions only (dispatch / hand-over / failed attempt) |
 | READY_FOR_DELIVERY | ON_HOLD | required | — | — |
-| OUT_FOR_DELIVERY | DELIVERED | — | — | delivery hand-over workflow only (Phase 9) |
-| OUT_FOR_DELIVERY | READY_FOR_DELIVERY | required | — | — |
+| OUT_FOR_DELIVERY | DELIVERED | — | — | delivery actions only (dispatch / hand-over / failed attempt) |
+| OUT_FOR_DELIVERY | READY_FOR_DELIVERY | required | — | delivery actions only (dispatch / hand-over / failed attempt) |
 | DELIVERED | RECEIVED | required | jobs.reopen | — |
 | CANCELLED | RECEIVED | required | jobs.reopen | — |
 | ON_HOLD | RECEIVED | — | — | only the status held from |

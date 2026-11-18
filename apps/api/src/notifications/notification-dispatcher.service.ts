@@ -22,6 +22,7 @@ const TEMPLATES: Record<string, string> = {
   ESTIMATE_READY: 'estimate_ready_v1',
   ESTIMATE_DECISION_RECORDED: 'estimate_decision_v1',
   PAYMENT_RECEIVED: 'payment_receipt_v1',
+  DELIVERY_CONFIRMED: 'delivery_confirmed_v1',
 };
 
 interface ClaimedRow {

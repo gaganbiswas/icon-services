@@ -22,6 +22,10 @@ import {
   renderJobReceiptHtml,
 } from './job-receipt.template.js';
 import {
+  type DeliveryChallanSnapshot,
+  renderDeliveryChallanHtml,
+} from './delivery-challan.template.js';
+import {
   type PaymentReceiptSnapshot,
   renderPaymentReceiptHtml,
 } from './payment-receipt.template.js';
@@ -242,6 +246,189 @@ export class DocumentsService {
       reversalReason: payment.reversalReason,
       footer: payments.receiptFooter,
       footerIsPlaceholder: payments.receiptFooter === SETTINGS.payments.default.receiptFooter,
+      generatedAt: `${formatDateTime(new Date(), timeZone)} (${timeZone})`,
+    };
+  }
+
+  /** Delivery challan (ADR 0017); a new version is generated whenever the delivery status changes. */
+  async deliveryChallan(
+    organizationId: string,
+    deliveryId: string,
+    layout: ReceiptLayout,
+    actor: { userId: string | null },
+  ): Promise<DocumentLink> {
+    const delivery = await this.prisma.delivery.findFirst({
+      where: { id: deliveryId, organizationId },
+    });
+    if (!delivery) throw AppException.notFound('Delivery');
+    const latest = await this.prisma.document.findFirst({
+      where: {
+        organizationId,
+        entityType: 'delivery',
+        entityId: deliveryId,
+        documentType: 'DELIVERY_CHALLAN',
+        layout,
+      },
+      orderBy: { version: 'desc' },
+      select: { id: true, documentNumber: true, version: true, fileId: true, snapshot: true },
+    });
+    if (
+      latest &&
+      (latest.snapshot as { status?: string } | undefined)?.status === delivery.status
+    ) {
+      return this.link(organizationId, latest);
+    }
+    const snapshot = await this.buildChallanSnapshot(organizationId, deliveryId);
+    const pdf = await this.renderer.render(renderDeliveryChallanHtml(snapshot, layout));
+    const version = (latest?.version ?? 0) + 1;
+    try {
+      const document = await this.prisma.$transaction(async (tx) => {
+        const fileId = await this.files.storeGenerated(
+          organizationId,
+          pdf,
+          `delivery-challan-${snapshot.challanNumber}.pdf`,
+          'application/pdf',
+          tx,
+        );
+        const created = await tx.document.create({
+          data: {
+            organizationId,
+            branchId: delivery.branchId,
+            documentType: 'DELIVERY_CHALLAN',
+            entityType: 'delivery',
+            entityId: deliveryId,
+            documentNumber: snapshot.challanNumber,
+            layout,
+            version,
+            fileId,
+            snapshot: snapshot as unknown as Prisma.InputJsonValue,
+            generatedById: actor.userId,
+          },
+          select: { id: true, documentNumber: true, version: true, fileId: true },
+        });
+        await this.audit.record(tx, {
+          organizationId,
+          branchId: delivery.branchId,
+          actorUserId: actor.userId,
+          actorType: actor.userId ? 'USER' : 'SYSTEM',
+          action: 'document.generated',
+          entityType: 'document',
+          entityId: created.id,
+          after: { documentType: 'DELIVERY_CHALLAN', deliveryId, layout, version },
+        });
+        return created;
+      });
+      return await this.link(organizationId, document);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return this.deliveryChallan(organizationId, deliveryId, layout, actor);
+      }
+      throw error;
+    }
+  }
+
+  private async buildChallanSnapshot(
+    organizationId: string,
+    deliveryId: string,
+  ): Promise<DeliveryChallanSnapshot> {
+    const d = await this.prisma.delivery.findFirstOrThrow({
+      where: { id: deliveryId, organizationId },
+      include: {
+        items: { orderBy: { createdAt: 'asc' } },
+        job: {
+          include: {
+            organization: { select: { displayName: true, timezone: true } },
+            branch: true,
+            customer: { select: { name: true, customerCode: true, phoneDisplay: true } },
+            asset: { include: { category: { select: { name: true } } } },
+          },
+        },
+      },
+    });
+    const [documents, delivery] = await Promise.all([
+      this.settings.get(organizationId, 'documents'),
+      this.settings.get(organizationId, 'delivery'),
+    ]);
+    const job = d.job;
+    const timeZone = job.branch.timezone ?? job.organization.timezone ?? 'UTC';
+    const address = d.address as {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      postalCode?: string;
+      countryCode?: string;
+    } | null;
+    const balance = d.balanceSnapshot as { due?: string; currency?: string | null } | null;
+    const MODE: Record<string, string> = {
+      CUSTOMER_PICKUP: 'Customer pick-up',
+      HOME_DELIVERY: 'Home delivery',
+      ON_SITE_RETURN: 'On-site return',
+      OTHER: 'Other',
+    };
+    const REL: Record<string, string> = {
+      SELF: 'Customer',
+      AUTHORIZED_PERSON: 'Authorized person',
+      FAMILY: 'Family member',
+      COLLEAGUE: 'Colleague',
+      OTHER: 'Other',
+    };
+    const due =
+      balance?.due && balance.currency ? formatMoney(balance.due, balance.currency) : null;
+    const device = `${job.asset.category.name}: ${job.asset.brand} ${job.asset.model}`;
+    return {
+      business: {
+        name: job.organization.displayName,
+        header: documents.businessHeader,
+        branchName: job.branch.name,
+        branchAddress:
+          [job.branch.addressLine1, job.branch.city, job.branch.postalCode]
+            .filter(Boolean)
+            .join(', ') || null,
+        branchPhone: job.branch.phone,
+      },
+      challanNumber: d.challanNumber,
+      status: d.status,
+      mode: MODE[d.mode] ?? d.mode,
+      date: formatDateTime(d.deliveredAt ?? d.dispatchedAt ?? d.createdAt, timeZone),
+      timeZone,
+      customer: {
+        name: job.customer.name,
+        code: job.customer.customerCode,
+        phone: job.customer.phoneDisplay,
+      },
+      address: address
+        ? [address.line1, address.line2, address.city, address.postalCode, address.countryCode]
+            .filter(Boolean)
+            .join(', ')
+        : null,
+      jobNumber: job.jobNumber,
+      device: { description: device, serialNumber: job.asset.serialNumber },
+      items: d.items.length
+        ? d.items.map((i) => ({
+            description: i.description,
+            returned: i.returned,
+            condition: i.condition,
+          }))
+        : [device, ...job.accessoriesReceived].map((x) => ({
+            description: x,
+            returned: false,
+            condition: null,
+          })),
+      recipient:
+        d.recipientName && d.relationship
+          ? {
+              name: d.recipientName,
+              relationship: REL[d.relationship] ?? d.relationship,
+              authorizationNote: d.authorizationNote,
+            }
+          : null,
+      balanceStatus: balance
+        ? due && balance.due !== '0.0000'
+          ? `Balance due at hand-over: ${due}${d.dueOverrideReason ? ' (delivery approved by manager)' : ''}`
+          : 'Nothing due at hand-over'
+        : 'To be confirmed at hand-over',
+      terms: delivery.challanTerms,
+      termsArePlaceholder: delivery.challanTerms === SETTINGS.delivery.default.challanTerms,
       generatedAt: `${formatDateTime(new Date(), timeZone)} (${timeZone})`,
     };
   }

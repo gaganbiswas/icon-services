@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 8 (2026-11-18).
+Updated: Phase 9 (2026-11-18).
 
 ## Conventions
 
@@ -145,6 +145,20 @@ References that look like card numbers are rejected.
 | GET | `/reports/collections?from=&to=&branchId=` | `reports.read` + `payments.read` | By method and cashier; reversed excluded; refunds by refund date |
 | GET | `/customer/payments` | customer | Own receipts |
 | POST | `/customer/payments/:id/receipt` | customer | Own receipt PDF |
+
+## Phase 9 endpoints (delivery, ADR 0017)
+
+`DELIVERED`, `OUT_FOR_DELIVERY` and the failed-attempt return are reachable only through these endpoints
+(`USE_DELIVERY_WORKFLOW` from the generic transition endpoint).
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/jobs/:id/deliveries` | `deliveries.read` | Deliveries, interim balance (approved estimate − net payments), required hand-over items |
+| POST | `/jobs/:id/deliveries/dispatch` | `deliveries.write` | `{version, mode: HOME_DELIVERY|OTHER, address}` → OUT_FOR_DELIVERY, challan number issued |
+| POST | `/jobs/:id/deliveries/handover` | `deliveries.complete` | `Idempotency-Key`; recipient, relationship (+ authorization), every intake item returned, proof (signed challan or photo), checklist; balance due ⇒ `deliveries.due_override` + `dueOverrideReason` (else `BALANCE_DUE`); releases open part reservations; → DELIVERED |
+| POST | `/deliveries/:id/failed-attempt` | `deliveries.write` | `{reason}` → READY_FOR_DELIVERY |
+| POST | `/deliveries/:id/challan?layout=` | `deliveries.read` | Challan PDF; new version when the delivery status changes |
+| GET | `/deliveries?from=&to=&branchId=` | `deliveries.read` | Delivery register |
 
 ### Customer API (customer access token; identity from token only)
 

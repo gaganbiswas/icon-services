@@ -54,13 +54,13 @@ const BASE_TRANSITIONS: Record<Exclude<JobStatus, 'ON_HOLD'>, readonly Transitio
   ],
   REPAIR_COMPLETED: [{ to: 'READY_FOR_DELIVERY' }],
   READY_FOR_DELIVERY: [
-    { to: 'OUT_FOR_DELIVERY' },
+    { to: 'OUT_FOR_DELIVERY', guard: 'DELIVERY_WORKFLOW' },
     { to: 'DELIVERED', guard: 'DELIVERY_WORKFLOW' },
     hold,
   ],
   OUT_FOR_DELIVERY: [
     { to: 'DELIVERED', guard: 'DELIVERY_WORKFLOW' },
-    { to: 'READY_FOR_DELIVERY', reasonRequired: true },
+    { to: 'READY_FOR_DELIVERY', reasonRequired: true, guard: 'DELIVERY_WORKFLOW' },
   ],
   DELIVERED: [{ to: 'RECEIVED', reasonRequired: true, permission: 'jobs.reopen' }],
   CANCELLED: [{ to: 'RECEIVED', reasonRequired: true, permission: 'jobs.reopen' }],

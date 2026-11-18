@@ -53,6 +53,11 @@ export const EstimateSettingsSchema = z.object({
   terms: z.string().min(1).max(4000),
 });
 
+export const DeliverySettingsSchema = z.object({
+  /** Printed on delivery challans (PLACEHOLDER until supplied, H59). */
+  challanTerms: z.string().min(1).max(2000),
+});
+
 export const PaymentSettingsSchema = z.object({
   /** Enabled payment methods (owner question D38). */
   methods: z
@@ -110,6 +115,14 @@ export const SETTINGS = {
   'numbering.refundNumber': {
     schema: NumberFormatSchema,
     default: { template: 'RFD-{BRANCH}-{YYYY}-{SEQ:6}', reset: 'YEARLY' } satisfies NumberFormat,
+  },
+  'numbering.challanNumber': {
+    schema: NumberFormatSchema,
+    default: { template: 'DC-{BRANCH}-{YYYY}-{SEQ:6}', reset: 'YEARLY' } satisfies NumberFormat,
+  },
+  delivery: {
+    schema: DeliverySettingsSchema,
+    default: { challanTerms: 'Delivery terms to be confirmed by the business.' },
   },
   payments: {
     schema: PaymentSettingsSchema,

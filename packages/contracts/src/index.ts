@@ -3,6 +3,7 @@ export * from './assets.js';
 export * from './auth.js';
 export * from './customer-auth.js';
 export * from './customers.js';
+export * from './delivery.js';
 export * from './errors.js';
 export * from './estimates.js';
 export * from './files.js';
