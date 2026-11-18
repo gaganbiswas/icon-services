@@ -22,7 +22,11 @@
     "check": "bun run format:check && turbo run lint typecheck test build",
     "services:up": "docker compose up -d --wait",
     "services:down": "docker compose down",
-    "audit": "bun audit --audit-level=high --ignore=GHSA-fc5q-39xc-vjpf"
+    "audit": "bun audit --audit-level=high --ignore=GHSA-fc5q-39xc-vjpf",
+    "db:migrate": "bun run --filter @icon/database db:migrate",
+    "db:deploy": "bun run --filter @icon/database db:deploy",
+    "db:status": "bun run --filter @icon/database db:status",
+    "db:seed:dev": "bunx turbo run build --filter=@icon/database && bun run --filter @icon/database db:seed:dev"
   },
   "devDependencies": {
     "prettier": "3.10.1",

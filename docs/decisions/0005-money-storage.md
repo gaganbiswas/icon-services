@@ -1,13 +1,13 @@
 # 0005 — Money storage strategy
 
-- **Status:** Proposed
+- **Status:** Approved (owner, 2026-11-18)
 - **Date:** 2026-11-18
 
 ## Context
 
 `CLAUDE.md` requires one consistent, decimal-safe approach; never floating point.
 
-## Proposed decision
+## Decision
 
 - Store all monetary amounts as PostgreSQL **`NUMERIC(19,4)`** (Prisma `Decimal @db.Decimal(19,4)`).
 - Store tax rates as `NUMERIC(9,6)` (e.g. a percentage with fractional precision).

@@ -7,6 +7,8 @@ export function testEnv(overrides: Record<string, string> = {}): Env {
     DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/test',
     REDIS_URL: 'redis://127.0.0.1:1',
     API_CORS_ORIGINS: 'http://localhost:5173',
+    JWT_ACCESS_SECRET: 'test-only-secret-test-only-secret-0123456789',
+    AUTH_COOKIE_SECURE: 'false',
     ...overrides,
   });
 }

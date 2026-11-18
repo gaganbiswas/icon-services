@@ -5,17 +5,42 @@
   "type": "module",
   "description": "Prisma schema, migrations and seed. Imported only by apps/api.",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "typecheck": "prisma generate && tsc --noEmit",
     "lint": "prisma format --check && eslint .",
-    "test": "prisma validate",
+    "test": "prisma validate && vitest run",
     "db:validate": "prisma validate",
-    "db:format": "prisma format"
+    "db:format": "prisma format",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:seed:dev": "node dist/seed/dev.js"
   },
   "devDependencies": {
     "@icon/config": "workspace:*",
     "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
     "eslint": "9.39.5",
     "prisma": "7.10.1",
-    "typescript": "6.0.3"
-  }
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
+  },
+  "dependencies": {
+    "@icon/contracts": "workspace:*",
+    "@node-rs/argon2": "2.2.2",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "pg": "8.23.1"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "prisma"
+  ]
 }

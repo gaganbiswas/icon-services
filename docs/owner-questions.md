@@ -61,7 +61,7 @@ confirmation from the business's accountant / tax professional.
 
 ## D. Operations and policies
 
-28. Number of branches now, and expected within 12 months? Branch codes/names. _answer_
+28. Number of branches now, and expected within 12 months? Branch codes/names. _answer_ (Development seed uses one placeholder branch `DEV-01`.)
 29. Job number format (e.g. `BR1-2026-000123`)? Reset yearly? _answer_
 30. Receipt and delivery challan number formats. _answer_
 31. Staff list by role for initial setup (names only; no passwords). _answer_
@@ -113,12 +113,13 @@ confirmation from the business's accountant / tax professional.
     require years), photos, message logs. **[ACCOUNTANT/LEGAL]** _answer_
 54. Do you have a privacy policy, terms of service, and consent wording, or
     do these need to be drafted for legal review? _answer_
-55. MFA for admin/accounts staff: authenticator app (TOTP) acceptable? _answer_
+55. MFA for admin/accounts staff: authenticator app (TOTP) acceptable? **Yes (2026-11-18) — plan in ADR 0011.**
+56. May the system store client IP address and browser/user-agent on sign-in sessions and audit records for security monitoring? (Setting `AUDIT_STORE_CLIENT_METADATA`; legal basis depends on jurisdiction.) _answer_
 
 ## H. Branding and documents
 
-56. Logo files (SVG/PNG high-res), brand colours, fonts. _answer_
-57. Text for job receipt terms & conditions (liability, unclaimed devices,
+57. Logo files (SVG/PNG high-res), brand colours, fonts. _answer_
+58. Text for job receipt terms & conditions (liability, unclaimed devices,
     data-loss disclaimer). _answer_
-58. Text for estimate, invoice, delivery challan terms; signature blocks. _answer_
-59. Paper sizes: A4 for invoice/challan; thermal for job receipt? _answer_
+59. Text for estimate, invoice, delivery challan terms; signature blocks. _answer_
+60. Paper sizes: A4 for invoice/challan; thermal for job receipt? _answer_

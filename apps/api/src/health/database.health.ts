@@ -1,37 +1,18 @@
-import { Inject, Injectable, type OnModuleDestroy } from '@nestjs/common';
-import pg from 'pg';
+import { Inject, Injectable } from '@nestjs/common';
+import type { PrismaClient } from '@icon/database';
 
-import { APP_ENV } from '../config/config.module.js';
-import type { Env } from '../config/env.js';
+import { PRISMA } from '../prisma/prisma.service.js';
 import type { HealthIndicator } from './health-indicator.js';
 
-/**
- * PostgreSQL readiness probe using a tiny dedicated pool.
- * Phase 2 replaces this with the Prisma client once the schema exists.
- */
+/** PostgreSQL readiness probe through the shared Prisma client. */
 @Injectable()
-export class DatabaseHealthIndicator implements HealthIndicator, OnModuleDestroy {
+export class DatabaseHealthIndicator implements HealthIndicator {
   readonly name = 'database';
-  private readonly pool: pg.Pool;
 
-  constructor(@Inject(APP_ENV) env: Env) {
-    this.pool = new pg.Pool({
-      connectionString: env.DATABASE_URL,
-      max: 1,
-      connectionTimeoutMillis: 2_000,
-      idleTimeoutMillis: 10_000,
-      allowExitOnIdle: true,
-    });
-    // Idle-client errors must not crash the process; the next check reports down.
-    this.pool.on('error', () => undefined);
-  }
+  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   async check(): Promise<boolean> {
-    const result = await this.pool.query<{ ok: number }>('SELECT 1 AS ok');
-    return result.rows[0]?.ok === 1;
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.pool.end();
+    const rows = await this.prisma.$queryRaw<{ ok: number }[]>`SELECT 1 AS ok`;
+    return rows[0]?.ok === 1;
   }
 }

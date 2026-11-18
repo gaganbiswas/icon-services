@@ -9,12 +9,14 @@ import {
 import type { Response } from 'express';
 
 import { toOpenApiSchema } from '../common/openapi.js';
+import { Public } from '../auth/decorators.js';
 import { HealthService } from './health.service.js';
 
 const livenessSchema = toOpenApiSchema(LivenessResponseSchema);
 const readinessSchema = toOpenApiSchema(ReadinessResponseSchema);
 
 @ApiTags('health')
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly health: HealthService) {}

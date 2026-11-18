@@ -7,7 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phase 1 (monorepo foundation). No business features yet.
+> **Status:** Phase 2 complete — database foundation, staff authentication, RBAC with branch scoping, audit log.
+> Customer, job and billing features start in Phase 3.
 
 ## Repository layout
 
@@ -31,16 +32,27 @@ Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 ## Getting started
 
 ```sh
-cp .env.example .env          # local-only placeholder values
+cp .env.example .env          # local-only placeholders — set JWT_ACCESS_SECRET and SEED_ADMIN_PASSWORD
 bun install
 bun run services:up           # PostgreSQL :5433, Redis :6380, S3 :8333 (localhost only)
 bun run build
+bun run db:migrate            # apply Prisma migrations to the dev database
+bun run db:seed:dev           # dev-only: placeholder org/branch + Super Admin from SEED_ADMIN_*
 bun run dev                   # API :4000, admin :5173, web :3000, Expo (Metro)
 ```
+
+Sign in to the admin panel at http://localhost:5173 with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+New staff are created via `POST /api/v1/users`; the response contains a one-time set-up token, used at
+`http://localhost:5173/set-password#token=<token>` (the token stays in the URL fragment, never sent to servers).
+
+Integration tests use a separate database (`TEST_DATABASE_URL`, name must end in `_test`), created
+automatically for new Docker volumes. For an existing volume:
+`docker compose exec postgres psql -U icon -d icon_service -c 'CREATE DATABASE icon_service_test'`.
 
 Run a single app: `bunx turbo run dev --filter=@icon/api` (or `@icon/admin`, `@icon/web`, `@icon/mobile`).
 
 Health checks: `GET http://localhost:4000/api/v1/health/live` and `/health/ready`.
+API reference: [`docs/api-specification.md`](docs/api-specification.md). Schema: [`docs/database-dictionary.md`](docs/database-dictionary.md).
 OpenAPI docs: http://localhost:4000/api/docs (when `API_DOCS_ENABLED=true`).
 
 ## Quality commands
@@ -53,5 +65,7 @@ OpenAPI docs: http://localhost:4000/api/docs (when `API_DOCS_ENABLED=true`).
 | `bun run format` | Prettier write |
 | `bun run audit` | Dependency audit (policy: `docs/security/dependency-audit.md`) |
 | `bun run services:down` | Stop local services (data volumes are kept) |
+| `bun run db:migrate` / `db:deploy` / `db:status` | Prisma migrations (dev / apply / status) |
+| `bun run db:seed:dev` | Development seed (refuses `NODE_ENV=production`) |
 
 CI: `.github/workflows/ci.yml` (GitHub Actions).

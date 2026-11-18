@@ -5,6 +5,7 @@ import { InvalidEnvironmentError, enabledLogLevels, parseEnv } from './env.js';
 const valid = {
   DATABASE_URL: 'postgresql://user:secret-password@localhost:5433/db',
   REDIS_URL: 'redis://localhost:6380',
+  JWT_ACCESS_SECRET: 'x'.repeat(32),
 };
 
 describe('parseEnv', () => {
@@ -62,6 +63,37 @@ describe('parseEnv', () => {
       expect(error).toBeInstanceOf(InvalidEnvironmentError);
       expect((error as Error).message).not.toContain(secret);
     }
+  });
+});
+
+describe('auth settings', () => {
+  it('applies secure defaults', () => {
+    const env = parseEnv(valid);
+    expect(env).toMatchObject({
+      ACCESS_TOKEN_TTL_SECONDS: 900,
+      REFRESH_TOKEN_IDLE_TTL_DAYS: 7,
+      SESSION_ABSOLUTE_TTL_DAYS: 30,
+      AUTH_COOKIE_SECURE: true,
+      LOGIN_MAX_FAILED_ATTEMPTS: 5,
+      AUDIT_STORE_CLIENT_METADATA: false,
+      HTTP_TRUST_PROXY: 0,
+    });
+  });
+
+  it('requires a long JWT secret', () => {
+    expect(() => parseEnv({ ...valid, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
+  });
+
+  it('refuses insecure cookies in production', () => {
+    expect(() =>
+      parseEnv({ ...valid, NODE_ENV: 'production', AUTH_COOKIE_SECURE: 'false' }),
+    ).toThrow(/AUTH_COOKIE_SECURE/);
+  });
+
+  it('keeps refresh idle lifetime within the session lifetime', () => {
+    expect(() =>
+      parseEnv({ ...valid, REFRESH_TOKEN_IDLE_TTL_DAYS: '20', SESSION_ABSOLUTE_TTL_DAYS: '10' }),
+    ).toThrow(/REFRESH_TOKEN_IDLE_TTL_DAYS/);
   });
 });
 
