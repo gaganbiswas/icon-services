@@ -12,6 +12,8 @@ export const ME: MeResponse = {
   permissions: ['users.read'],
   branchAccess: 'ALL',
   mustChangePassword: false,
+  mfaEnrollmentRequired: false,
+  mfaEnabled: false,
 };
 
 export type Handler = (url: string, init: RequestInit) => { status: number; body?: unknown };

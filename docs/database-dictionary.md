@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 10 (2026-11-19).
+and `packages/database/prisma/migrations/`. Updated: Phase 11 (2026-11-19).
 
 ## Conventions
 
@@ -130,6 +130,14 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `deliveries` | One per dispatch / hand-over; unique `(organization_id, challan_number)`; partial unique indexes: one DISPATCHED and one COMPLETED per job; CHECK: completed ⇒ recipient, relationship, proof (photo file for PHOTO_PROOF), authorization note unless SELF, balance snapshot, delivered time/by; override reason ⇔ approver; FAILED ⇒ reason. **Trigger:** completed/failed rows final, no deletes |
 | `delivery_items` | Items handed back (description, returned, condition); append-only |
 
+## Tables (Phase 11, ADR 0011)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `user_mfa` | One per staff user: AES-256-GCM sealed TOTP secret, `enabled_at` (null = set-up pending), `last_used_step` (replay protection) |
+| `user_mfa_recovery_codes` | 10 Argon2id-hashed single-use codes (`used_at`) |
+| `mfa_challenges` | Pending second sign-in steps: SHA-256 token hash, attempts (max 5), 5-minute expiry, single use |
+
 ## Phase 10 notes (ADR 0018)
 
 - `notification_deliveries.status`: adds `SKIPPED_NOT_CONFIGURED` (channel disabled or no approved template).
@@ -149,6 +157,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase11_mfa` | MFA tables |
 | `…_phase10_delivery_status` | `DeliveryStatus` value `SKIPPED_NOT_CONFIGURED` |
 | `…_phase9_delivery` | Deliveries, items; constraints and triggers |
 | `…_phase8_payments` | Payments and refunds; immutability triggers |

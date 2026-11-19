@@ -361,3 +361,14 @@ th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Two-step sign-in */
+.recovery-codes {
+  columns: 2;
+  font-size: 1.05rem;
+  padding-left: 1.25rem;
+}
+.secret {
+  word-break: break-all;
+  font-size: 1.05rem;
+}

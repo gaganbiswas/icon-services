@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyJobsRouteImport } from './routes/my-jobs'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as CustomersIndexRouteImport } from './routes/customers/index'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$customerId'
@@ -49,6 +50,11 @@ const LoginRoute = LoginRouteImport.update({
 const MyJobsRoute = MyJobsRouteImport.update({
   id: '/my-jobs',
   path: '/my-jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetPasswordRoute = SetPasswordRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-jobs': typeof MyJobsRoute
+  '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-jobs': typeof MyJobsRoute
+  '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-jobs': typeof MyJobsRoute
+  '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/customers/new': typeof CustomersNewRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-jobs'
+    | '/security'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-jobs'
+    | '/security'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-jobs'
+    | '/security'
     | '/set-password'
     | '/customers/$customerId'
     | '/customers/new'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
   MyJobsRoute: typeof MyJobsRoute
+  SecurityRoute: typeof SecurityRoute
   SetPasswordRoute: typeof SetPasswordRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   CustomersNewRoute: typeof CustomersNewRoute
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       path: '/my-jobs'
       fullPath: '/my-jobs'
       preLoaderRoute: typeof MyJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/set-password': {
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
   MyJobsRoute: MyJobsRoute,
+  SecurityRoute: SecurityRoute,
   SetPasswordRoute: SetPasswordRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   CustomersNewRoute: CustomersNewRoute,

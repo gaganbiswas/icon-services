@@ -26,7 +26,9 @@
     "db:migrate": "bun run --filter @icon/database db:migrate",
     "db:deploy": "bun run --filter @icon/database db:deploy",
     "db:status": "bun run --filter @icon/database db:status",
-    "db:seed:dev": "bunx turbo run build --filter=@icon/database && bun run --filter @icon/database db:seed:dev"
+    "db:seed:dev": "bunx turbo run build --filter=@icon/database && bun run --filter @icon/database db:seed:dev",
+    "backup:drill:local": "infra/scripts/drill-local.sh",
+    "test:perf": "bun run --filter @icon/api test:perf"
   },
   "devDependencies": {
     "prettier": "3.10.1",

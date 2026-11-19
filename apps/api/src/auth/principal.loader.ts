@@ -3,13 +3,19 @@ import { type PermissionCode, isPermissionCode } from '@icon/contracts';
 import type { PrismaClient } from '@icon/database';
 
 import type { Principal } from '../access/principal.js';
+import { APP_ENV } from '../config/config.module.js';
+import type { Env } from '../config/env.js';
+import { isPrivileged } from '../mfa/mfa.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
 import type { AccessTokenClaims } from './token.service.js';
 
 /** Resolves the current principal from the database (no permission caching). */
 @Injectable()
 export class PrincipalLoader {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Inject(APP_ENV) private readonly env: Env,
+  ) {}
 
   async load(claims: AccessTokenClaims): Promise<Principal | null> {
     const now = new Date();
@@ -35,6 +41,7 @@ export class PrincipalLoader {
             email: true,
             fullName: true,
             mustChangePassword: true,
+            mfa: { select: { enabledAt: true } },
             roles: {
               select: {
                 roleId: true,
@@ -67,6 +74,11 @@ export class PrincipalLoader {
       email: user.email,
       fullName: user.fullName,
       mustChangePassword: user.mustChangePassword,
+      mfaEnabled: Boolean(user.mfa?.enabledAt),
+      mfaEnrollmentRequired:
+        this.env.MFA_ENFORCEMENT === 'required' &&
+        !user.mfa?.enabledAt &&
+        isPrivileged(permissions),
       roleIds: new Set(user.roles.map((r) => r.roleId)),
       permissions,
       branchAccess: permissions.has('branches.all')

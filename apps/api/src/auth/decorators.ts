@@ -7,6 +7,7 @@ import type { Principal } from '../access/principal.js';
 export const IS_PUBLIC = 'icon:isPublic';
 export const REQUIRED_PERMISSIONS = 'icon:requiredPermissions';
 export const ALLOW_PENDING_PASSWORD_CHANGE = 'icon:allowPendingPasswordChange';
+export const ALLOW_PENDING_MFA_ENROLLMENT = 'icon:allowPendingMfaEnrollment';
 
 /** Route needs no authentication. Use sparingly. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
@@ -17,6 +18,9 @@ export const RequirePermissions = (...permissions: PermissionCode[]) =>
 
 /** Route stays available while the user must change their password. */
 export const AllowPendingPasswordChange = () => SetMetadata(ALLOW_PENDING_PASSWORD_CHANGE, true);
+
+/** Route stays available while a privileged user must still set up MFA (ADR 0011). */
+export const AllowPendingMfaEnrollment = () => SetMetadata(ALLOW_PENDING_MFA_ENROLLMENT, true);
 
 const PRINCIPAL_KEY = Symbol('icon:principal');
 

@@ -22,6 +22,8 @@ function principal(
     email: 'a@example.test',
     fullName: 'A',
     mustChangePassword: false,
+    mfaEnrollmentRequired: false,
+    mfaEnabled: false,
     roleIds: new Set(),
     permissions: new Set(permissions),
     branchAccess: branchAccess === 'ALL' ? 'ALL' : new Set(branchAccess),

@@ -8,6 +8,7 @@ import { AppException } from '../common/app-exception.js';
 import { CUSTOMER_ROUTE, setCustomerPrincipal } from '../customer-auth/customer-principal.js';
 import { CustomerPrincipalLoader } from '../customer-auth/customer-principal.loader.js';
 import {
+  ALLOW_PENDING_MFA_ENROLLMENT,
   ALLOW_PENDING_PASSWORD_CHANGE,
   IS_PUBLIC,
   REQUIRED_PERMISSIONS,
@@ -67,6 +68,17 @@ export class AuthGuard implements CanActivate {
         HttpStatus.FORBIDDEN,
         'PASSWORD_CHANGE_REQUIRED',
         'You must change your password before continuing',
+      );
+    }
+
+    if (
+      principal.mfaEnrollmentRequired &&
+      !this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_MFA_ENROLLMENT, targets)
+    ) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        'MFA_ENROLLMENT_REQUIRED',
+        'Set up two-step sign-in before continuing',
       );
     }
 

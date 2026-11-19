@@ -132,8 +132,9 @@ describe('EstimateApproval', () => {
         },
       },
     }));
-    render(<EstimateApproval fetchImpl={fetchImpl} />);
+    const first = render(<EstimateApproval fetchImpl={fetchImpl} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/already used or expired/);
+    first.unmount();
 
     window.history.replaceState(null, '', '/estimate');
     render(<EstimateApproval fetchImpl={fetchImpl} />);

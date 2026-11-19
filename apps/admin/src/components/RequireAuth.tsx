@@ -7,9 +7,11 @@ import { useAuth } from '../lib/auth';
 export function RequireAuth({
   children,
   allowPendingPasswordChange = false,
+  allowPendingMfaEnrollment = false,
 }: {
   children: ReactNode;
   allowPendingPasswordChange?: boolean;
+  allowPendingMfaEnrollment?: boolean;
 }) {
   const { state } = useAuth();
   if (state.status === 'loading') {
@@ -24,6 +26,13 @@ export function RequireAuth({
   }
   if (state.me.mustChangePassword && !allowPendingPasswordChange) {
     return <Navigate to="/change-password" />;
+  }
+  if (
+    state.me.mfaEnrollmentRequired &&
+    !allowPendingMfaEnrollment &&
+    !state.me.mustChangePassword
+  ) {
+    return <Navigate to="/security" />;
   }
   return <>{children}</>;
 }

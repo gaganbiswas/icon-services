@@ -12,6 +12,8 @@ import { AuthService } from './auth.service.js';
 import { MeController } from './me.controller.js';
 import { PasswordService } from './password.service.js';
 import { PrincipalLoader } from './principal.loader.js';
+import { MfaController } from '../mfa/mfa.controller.js';
+import { MfaService } from '../mfa/mfa.service.js';
 import { TokenService } from './token.service.js';
 
 @Global()
@@ -27,12 +29,13 @@ import { TokenService } from './token.service.js';
       }),
     }),
   ],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, MfaController],
   providers: [
     TokenService,
     PasswordService,
     PrincipalLoader,
     AuthService,
+    MfaService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   exports: [AuthService, PasswordService, TokenService],

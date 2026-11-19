@@ -48,6 +48,7 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
     API_DOCS_ENABLED: 'false',
     S3_BUCKET: TEST_BUCKET,
     OTP_PEPPER: randomBytes(48).toString('base64url'),
+    MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
     ...overrides,
   });
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(env)] }).compile();

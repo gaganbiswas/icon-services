@@ -1,4 +1,4 @@
-import type { MeResponse } from '@icon/contracts';
+import { isMfaChallenge, type MeResponse } from '@icon/contracts';
 import {
   type ReactNode,
   createContext,
@@ -14,10 +14,15 @@ import { type ApiClient, apiClient } from './api-client';
 type AuthState =
   { status: 'loading' } | { status: 'anonymous' } | { status: 'authenticated'; me: MeResponse };
 
+export type SignInResult =
+  { kind: 'signed-in'; me: MeResponse } | { kind: 'mfa'; challengeToken: string };
+
 interface AuthContextValue {
   readonly state: AuthState;
   readonly client: ApiClient;
-  readonly signIn: (email: string, password: string) => Promise<MeResponse>;
+  /** Returns the user, or the MFA challenge token when a second step is needed. */
+  readonly signIn: (email: string, password: string) => Promise<SignInResult>;
+  readonly completeMfa: (challengeToken: string, code: string) => Promise<MeResponse>;
   readonly signOut: () => Promise<void>;
   readonly reload: () => Promise<void>;
 }
@@ -63,7 +68,14 @@ export function AuthProvider({
       client,
       reload,
       signIn: async (email, password) => {
-        await client.login(email, password);
+        const result = await client.login(email, password);
+        if (isMfaChallenge(result)) return { kind: 'mfa', challengeToken: result.challengeToken };
+        const me = await client.me();
+        setState({ status: 'authenticated', me });
+        return { kind: 'signed-in', me };
+      },
+      completeMfa: async (challengeToken, code) => {
+        await client.verifyMfa(challengeToken, code);
         const me = await client.me();
         setState({ status: 'authenticated', me });
         return me;

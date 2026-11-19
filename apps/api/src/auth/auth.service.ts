@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { AccessTokenResponse } from '@icon/contracts';
+import type { AccessTokenResponse, MfaChallengeResponse } from '@icon/contracts';
 import type { Prisma, PrismaClient } from '@icon/database';
 
 import type { Principal } from '../access/principal.js';
@@ -8,6 +8,7 @@ import { AppException } from '../common/app-exception.js';
 import { currentRequestContext } from '../common/request-context.js';
 import { APP_ENV } from '../config/config.module.js';
 import type { Env } from '../config/env.js';
+import { MfaService } from '../mfa/mfa.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
 import { PasswordService } from './password.service.js';
 import { TokenService, generateOpaqueToken, hashToken } from './token.service.js';
@@ -26,6 +27,12 @@ export type SessionRevocationReason =
   | 'PASSWORD_RESET'
   | 'USER_DEACTIVATED'
   | 'ADMIN';
+
+const MFA_CHALLENGE_TTL_MS = 5 * MINUTE_MS;
+const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
+
+export type LoginOutcome =
+  { kind: 'session'; issued: IssuedSession } | { kind: 'mfa'; challenge: MfaChallengeResponse };
 
 export interface IssuedSession {
   readonly response: AccessTokenResponse;
@@ -62,11 +69,12 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly passwords: PasswordService,
     private readonly audit: AuditService,
+    private readonly mfa: MfaService,
   ) {}
 
   // ---------------------------------------------------------------- login
 
-  async login(email: string, password: string): Promise<IssuedSession> {
+  async login(email: string, password: string): Promise<LoginOutcome> {
     const emailNormalized = normalizeEmail(email);
     const user = await this.prisma.user.findUnique({
       where: { emailNormalized },
@@ -150,6 +158,127 @@ export class AuthService {
       throw invalidCredentials();
     }
 
+    if (await this.mfa.enabled(user.id)) {
+      // Password is right; a session is issued only after the second factor.
+      const challengeToken = generateOpaqueToken();
+      await this.prisma.$transaction(async (tx) => {
+        await tx.mfaChallenge.create({
+          data: {
+            userId: user.id,
+            tokenHash: hashToken(challengeToken),
+            expiresAt: new Date(now.getTime() + MFA_CHALLENGE_TTL_MS),
+          },
+        });
+        await this.audit.record(tx, {
+          organizationId: user.organizationId,
+          actorUserId: null,
+          action: 'auth.login.mfa_challenged',
+          entityType: 'user',
+          entityId: user.id,
+        });
+      });
+      return {
+        kind: 'mfa',
+        challenge: { mfaRequired: true, challengeToken, expiresIn: MFA_CHALLENGE_TTL_MS / 1000 },
+      };
+    }
+
+    return {
+      kind: 'session',
+      issued: await this.completeLogin(user.id, user.organizationId, user.mustChangePassword, null),
+    };
+  }
+
+  /** Second sign-in step: authenticator or recovery code for a pending challenge. */
+  async verifyMfa(challengeToken: string, code: string): Promise<IssuedSession> {
+    const now = new Date();
+    const challenge = await this.prisma.mfaChallenge.findUnique({
+      where: { tokenHash: hashToken(challengeToken) },
+      select: {
+        id: true,
+        attempts: true,
+        expiresAt: true,
+        consumedAt: true,
+        user: {
+          select: {
+            id: true,
+            organizationId: true,
+            isActive: true,
+            lockedUntil: true,
+            mustChangePassword: true,
+            organization: { select: { isActive: true } },
+          },
+        },
+      },
+    });
+    const user = challenge?.user;
+    if (
+      !challenge ||
+      !user ||
+      challenge.consumedAt !== null ||
+      challenge.expiresAt <= now ||
+      challenge.attempts >= MFA_CHALLENGE_MAX_ATTEMPTS ||
+      !user.isActive ||
+      !user.organization.isActive ||
+      (user.lockedUntil !== null && user.lockedUntil > now)
+    ) {
+      throw new AppException(
+        HttpStatus.UNAUTHORIZED,
+        'INVALID_TOKEN',
+        'Sign-in expired. Start again.',
+      );
+    }
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      // Consume first so two parallel attempts cannot both succeed.
+      const claimed = await tx.mfaChallenge.updateMany({
+        where: { id: challenge.id, consumedAt: null, attempts: { lt: MFA_CHALLENGE_MAX_ATTEMPTS } },
+        data: { attempts: { increment: 1 } },
+      });
+      if (claimed.count !== 1) return null;
+      const method = await this.mfa.verify(tx, user.id, code);
+      if (!method) return null;
+      await tx.mfaChallenge.update({ where: { id: challenge.id }, data: { consumedAt: now } });
+      return method;
+    });
+    if (!outcome) {
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.user.update({
+          where: { id: user.id },
+          data: { failedLoginCount: { increment: 1 } },
+          select: { failedLoginCount: true },
+        });
+        const lock = updated.failedLoginCount >= this.env.LOGIN_MAX_FAILED_ATTEMPTS;
+        if (lock) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginCount: 0,
+              lockedUntil: new Date(now.getTime() + this.env.LOGIN_LOCKOUT_MINUTES * MINUTE_MS),
+            },
+          });
+        }
+        await this.audit.record(tx, {
+          organizationId: user.organizationId,
+          actorUserId: null,
+          action: 'auth.mfa.failed',
+          entityType: 'user',
+          entityId: user.id,
+          after: lock ? { locked: true } : undefined,
+        });
+      });
+      throw new AppException(HttpStatus.UNAUTHORIZED, 'MFA_INVALID', 'That code is not correct.');
+    }
+    return this.completeLogin(user.id, user.organizationId, user.mustChangePassword, outcome);
+  }
+
+  private completeLogin(
+    userId: string,
+    organizationId: string,
+    mustChangePassword: boolean,
+    mfaMethod: 'TOTP' | 'RECOVERY_CODE' | null,
+  ): Promise<IssuedSession> {
+    const now = new Date();
+    const user = { id: userId, organizationId, mustChangePassword };
     return this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: user.id },
@@ -167,6 +296,7 @@ export class AuthService {
         action: 'auth.login.succeeded',
         entityType: 'user',
         entityId: user.id,
+        ...(mfaMethod ? { after: { mfa: mfaMethod } } : {}),
       });
       return issued;
     });
@@ -537,6 +667,23 @@ export class AuthService {
         expiresAt: refreshExpiresAt,
       },
     });
+    const holder = await tx.user.findUniqueOrThrow({
+      where: { id: input.userId },
+      select: {
+        mfa: { select: { enabledAt: true } },
+        roles: {
+          select: {
+            role: {
+              select: { permissions: { select: { permission: { select: { code: true } } } } },
+            },
+          },
+        },
+      },
+    });
+    const mfaEnrollmentRequired = this.mfa.enrollmentRequired(
+      holder.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.code)),
+      Boolean(holder.mfa?.enabledAt),
+    );
     const accessToken = await this.tokens.signAccessToken({
       userId: input.userId,
       sessionId: input.sessionId,
@@ -550,6 +697,7 @@ export class AuthService {
         tokenType: 'Bearer',
         expiresIn: this.tokens.accessTokenTtlSeconds,
         mustChangePassword: input.mustChangePassword,
+        mfaEnrollmentRequired,
       },
     };
   }

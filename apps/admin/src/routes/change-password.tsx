@@ -9,7 +9,7 @@ import { fieldErrors, formMessage, formText } from '../lib/form-errors';
 
 export const Route = createFileRoute('/change-password')({
   component: () => (
-    <RequireAuth allowPendingPasswordChange>
+    <RequireAuth allowPendingPasswordChange allowPendingMfaEnrollment>
       <ChangePasswordPage />
     </RequireAuth>
   ),

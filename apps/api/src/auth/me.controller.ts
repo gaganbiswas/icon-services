@@ -6,7 +6,11 @@ import type { PrismaClient } from '@icon/database';
 import type { Principal } from '../access/principal.js';
 import { toOpenApiSchema } from '../common/openapi.js';
 import { PRISMA } from '../prisma/prisma.service.js';
-import { AllowPendingPasswordChange, CurrentPrincipal } from './decorators.js';
+import {
+  AllowPendingMfaEnrollment,
+  AllowPendingPasswordChange,
+  CurrentPrincipal,
+} from './decorators.js';
 
 @ApiTags('auth')
 @ApiBearerAuth()
@@ -16,6 +20,7 @@ export class MeController {
 
   @Get()
   @AllowPendingPasswordChange()
+  @AllowPendingMfaEnrollment()
   @ApiResponse({ status: 200, schema: toOpenApiSchema(MeResponseSchema) })
   async me(@CurrentPrincipal() principal: Principal): Promise<MeResponse> {
     const [organization, roles, branches] = await Promise.all([
@@ -48,6 +53,8 @@ export class MeController {
       permissions: [...principal.permissions].sort(),
       branchAccess: branches ?? 'ALL',
       mustChangePassword: principal.mustChangePassword,
+      mfaEnrollmentRequired: principal.mfaEnrollmentRequired,
+      mfaEnabled: principal.mfaEnabled,
     };
   }
 }

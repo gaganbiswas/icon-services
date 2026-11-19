@@ -5,6 +5,8 @@ import {
   type ErrorCode,
   type ErrorResponse,
   type MeResponse,
+  type LoginResponse,
+  isMfaChallenge,
 } from '@icon/contracts';
 
 export class ApiError extends Error {
@@ -41,10 +43,21 @@ export class ApiClient {
     return this.accessToken !== null;
   }
 
-  async login(email: string, password: string): Promise<AccessTokenResponse> {
-    const result = await this.send<AccessTokenResponse>('/auth/login', {
+  /** Password step. Returns an MFA challenge instead of a session when two-step sign-in is on. */
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const result = await this.send<LoginResponse>('/auth/login', {
       method: 'POST',
       body: { email, password },
+    });
+    if (!isMfaChallenge(result)) this.accessToken = result.accessToken;
+    return result;
+  }
+
+  /** Second sign-in step (authenticator or recovery code). */
+  async verifyMfa(challengeToken: string, code: string): Promise<AccessTokenResponse> {
+    const result = await this.send<AccessTokenResponse>('/auth/mfa/verify', {
+      method: 'POST',
+      body: { challengeToken, code },
     });
     this.accessToken = result.accessToken;
     return result;

@@ -81,6 +81,16 @@ export const EnvSchema = z
     CUSTOMER_REFRESH_TOKEN_IDLE_TTL_DAYS: intInRange(1, 90, 30),
     CUSTOMER_SESSION_ABSOLUTE_TTL_DAYS: intInRange(1, 365, 90),
 
+    // Multi-factor authentication (ADR 0011). Production requires enforcement and a key.
+    MFA_ENFORCEMENT: z.enum(['required', 'optional']).default('optional'),
+    /** 32 random bytes, base64 (openssl rand -base64 32). Seals TOTP secrets at rest. */
+    MFA_ENCRYPTION_KEY: z
+      .string()
+      .refine((v) => Buffer.from(v, 'base64').length === 32, 'must be 32 bytes, base64-encoded')
+      .optional(),
+    /** Name shown in authenticator apps. */
+    MFA_ISSUER: z.string().min(1).max(60).default('ICON Service'),
+
     // Notification providers (ADR 0018). Secrets come from the environment / secrets manager only.
     WHATSAPP_PROVIDER: z.enum(['mock', 'meta', 'disabled']).default('mock'),
     WHATSAPP_API_BASE_URL: z.url({ protocol: /^https?$/ }).default('https://graph.facebook.com'),
@@ -125,6 +135,20 @@ export const EnvSchema = z
         code: 'custom',
         path: ['AUTH_COOKIE_SECURE'],
         message: 'must be true in production',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.MFA_ENFORCEMENT !== 'required') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MFA_ENFORCEMENT'],
+        message: 'must be "required" in production',
+      });
+    }
+    if (env.MFA_ENFORCEMENT === 'required' && !env.MFA_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MFA_ENCRYPTION_KEY'],
+        message: 'required when MFA is enforced',
       });
     }
     if (

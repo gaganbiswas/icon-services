@@ -21,6 +21,9 @@ import {
   ErrorResponseSchema,
   type LoginRequest,
   LoginRequestSchema,
+  type LoginResponse,
+  MfaVerifyRequestSchema,
+  type MfaVerifyRequest,
 } from '@icon/contracts';
 import type { Request, Response } from 'express';
 
@@ -33,7 +36,12 @@ import type { Env } from '../config/env.js';
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from './auth-cookie.js';
 import { AuthService, type IssuedSession } from './auth.service.js';
 import { assertCsrfSafe } from './csrf.js';
-import { AllowPendingPasswordChange, CurrentPrincipal, Public } from './decorators.js';
+import {
+  AllowPendingMfaEnrollment,
+  AllowPendingPasswordChange,
+  CurrentPrincipal,
+  Public,
+} from './decorators.js';
 
 const tokenSchema = toOpenApiSchema(AccessTokenResponseSchema);
 const errorSchema = toOpenApiSchema(ErrorResponseSchema);
@@ -56,8 +64,29 @@ export class AuthController {
   async login(
     @Body(new ZodValidationPipe(LoginRequestSchema)) body: LoginRequest,
     @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResponse> {
+    const outcome = await this.auth.login(body.email, body.password);
+    if (outcome.kind === 'mfa') {
+      res.setHeader('Cache-Control', 'no-store');
+      return outcome.challenge;
+    }
+    return this.respond(res, outcome.issued);
+  }
+
+  @Public()
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({
+    summary: 'Second sign-in step: authenticator or recovery code. Sets the refresh cookie.',
+  })
+  @ApiResponse({ status: 200, schema: tokenSchema })
+  @ApiResponse({ status: 401, schema: errorSchema })
+  async verifyMfa(
+    @Body(new ZodValidationPipe(MfaVerifyRequestSchema)) body: MfaVerifyRequest,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenResponse> {
-    return this.respond(res, await this.auth.login(body.email, body.password));
+    return this.respond(res, await this.auth.verifyMfa(body.challengeToken, body.code));
   }
 
   @Public()
@@ -100,6 +129,7 @@ export class AuthController {
   @Post('password/change')
   @HttpCode(HttpStatus.NO_CONTENT)
   @AllowPendingPasswordChange()
+  @AllowPendingMfaEnrollment()
   @UseGuards(ThrottlerGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change own password. Signs out other sessions.' })

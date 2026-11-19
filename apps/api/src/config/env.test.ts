@@ -116,6 +116,29 @@ describe('auth settings', () => {
     ).toBe('meta');
   });
 
+  it('requires MFA enforcement and a 32-byte key in production', () => {
+    const prod = {
+      ...valid,
+      NODE_ENV: 'production',
+      AUTH_COOKIE_SECURE: 'true',
+      OTP_PROVIDER: 'whatsapp',
+      WHATSAPP_PROVIDER: 'disabled',
+      EMAIL_PROVIDER: 'disabled',
+    };
+    expect(() => parseEnv(prod)).toThrow(/MFA_ENFORCEMENT/);
+    expect(() => parseEnv({ ...valid, MFA_ENFORCEMENT: 'required' })).toThrow(/MFA_ENCRYPTION_KEY/);
+    expect(() =>
+      parseEnv({ ...valid, MFA_ENCRYPTION_KEY: Buffer.alloc(16).toString('base64') }),
+    ).toThrow(/32 bytes/);
+    expect(
+      parseEnv({
+        ...valid,
+        MFA_ENFORCEMENT: 'required',
+        MFA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+      }).MFA_ENFORCEMENT,
+    ).toBe('required');
+  });
+
   it('treats empty values as unset', () => {
     expect(parseEnv({ ...valid, WHATSAPP_ACCESS_TOKEN: '', SMTP_PORT: '' }).SMTP_PORT).toBe(587);
   });

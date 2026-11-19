@@ -171,6 +171,20 @@ References that look like card numbers are rejected.
 `POST /customer/auth/otp/request` returns **503 `OTP_DELIVERY_FAILED`** when the WhatsApp provider refuses the code.
 Manual retry (`POST /notifications/:id/retry`) keeps the attempt count; after the automatic limit it grants one more attempt.
 
+## Phase 11 endpoints (two-step sign-in, ADR 0011)
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/auth/login` | public | With MFA on, returns `{mfaRequired: true, challengeToken, expiresIn}` and **no** cookie/session. Otherwise the token response, now with `mfaEnrollmentRequired` |
+| POST | `/auth/mfa/verify` | public (rate-limited) | `{challengeToken, code}` — 6-digit TOTP or recovery code → token response + refresh cookie. Wrong → 401 `MFA_INVALID`; expired/spent challenge → 401 `INVALID_TOKEN` |
+| GET | `/auth/mfa` | signed-in staff | `{enabled, required, recoveryCodesRemaining}` |
+| POST | `/auth/mfa/enrollment` | signed-in staff | `{secret, otpauthUri}` (shown once; `Cache-Control: no-store`); 409 when already on |
+| POST | `/auth/mfa/enrollment/confirm` | signed-in staff | `{code}` → `{recoveryCodes: string[10]}` (shown once) |
+| POST | `/users/:id/mfa/reset` | `users.manage` | `{reason}`; not for oneself; signs the user out; audited |
+
+While `mfaEnrollmentRequired` is true, every other route answers 403 `MFA_ENROLLMENT_REQUIRED`. The full,
+generated route list with access rules is in `docs/security/authorization-matrix.md`.
+
 ## Phase 11 endpoints (reports, ADR 0019)
 
 All scoped to permitted branches; `branchId` outside scope → 404. Periods are `[from, to)` ISO instants, max 366 days.

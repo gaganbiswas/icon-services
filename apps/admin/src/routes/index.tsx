@@ -33,6 +33,8 @@ export function HomePage() {
           <dd>{me.email}</dd>
           <dt>Roles</dt>
           <dd>{me.roles.map((r) => r.name).join(', ') || 'None'}</dd>
+          <dt>Two-step sign-in</dt>
+          <dd>{me.mfaEnabled ? 'On' : 'Off'}</dd>
           <dt>Branches</dt>
           <dd>
             {me.branchAccess === 'ALL'
@@ -41,7 +43,8 @@ export function HomePage() {
           </dd>
         </dl>
         <p>
-          <Link to="/change-password">Change password</Link>
+          <Link to="/change-password">Change password</Link> ·{' '}
+          <Link to="/security">Two-step sign-in</Link>
         </p>
       </section>
     </>

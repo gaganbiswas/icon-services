@@ -114,14 +114,17 @@ model User {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignments         JobAssignment[]      @relation("AssignedTechnician")
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments         JobAssignment[]       @relation("AssignedTechnician")
   diagnoses           Diagnosis[]
   workLogs            WorkLog[]
-  roles               UserRole[]           @relation("UserRoles")
-  branchAccess        UserBranchAccess[]   @relation("UserBranchAccess")
+  roles               UserRole[]            @relation("UserRoles")
+  branchAccess        UserBranchAccess[]    @relation("UserBranchAccess")
   sessions            AuthSession[]
-  passwordSetupTokens PasswordSetupToken[] @relation("PasswordSetupTokenUser")
+  passwordSetupTokens PasswordSetupToken[]  @relation("PasswordSetupTokenUser")
+  mfa                 UserMfa?
+  mfaRecoveryCodes    UserMfaRecoveryCode[]
+  mfaChallenges       MfaChallenge[]
 
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -1413,4 +1416,54 @@ model DeliveryItem {
 
   @@index([deliveryId])
   @@map("delivery_items")
+}
+
+// ---------------------------------------------------------------------------
+// Multi-factor authentication (Phase 11, ADR 0011)
+
+/// TOTP secret for a staff user. Enabled once the first code is confirmed.
+model UserMfa {
+  userId       String    @id @map("user_id") @db.Uuid
+  /// AES-256-GCM sealed secret (key from MFA_ENCRYPTION_KEY); never returned after enrolment.
+  secretSealed String    @map("secret_sealed") @db.VarChar(200)
+  enabledAt    DateTime? @map("enabled_at") @db.Timestamptz(3)
+  /// Last accepted TOTP time step: a code is accepted at most once (replay protection).
+  lastUsedStep BigInt?   @map("last_used_step")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("user_mfa")
+}
+
+/// Single-use recovery codes, stored as Argon2id hashes.
+model UserMfaRecoveryCode {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash") @db.VarChar(255)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("user_mfa_recovery_codes")
+}
+
+/// Pending second sign-in step (password verified, code not yet).
+model MfaChallenge {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  /// SHA-256 of the opaque challenge token.
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("mfa_challenges")
 }

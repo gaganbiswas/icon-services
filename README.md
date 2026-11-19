@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phases 1–6 and 8–10 complete — through delivery, plus real WhatsApp (Meta Cloud API), SMTP email
-> and WhatsApp sign-in codes behind configuration (mocks remain for development).
+> **Status:** Phases 1–6 and 8–10 complete; Phase 11 (reports, hardening, UAT) in progress — dashboard, reports and
+> exports, two-step sign-in, authorization matrix, accessibility gate, encrypted backups with restore drill.
 > Invoicing (Phase 7) waits for written tax confirmation from the accountant.
 
 ## Repository layout

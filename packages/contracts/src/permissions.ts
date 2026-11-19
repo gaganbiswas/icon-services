@@ -70,3 +70,14 @@ export const PERMISSION_CODES = Object.keys(PERMISSIONS) as PermissionCode[];
 export function isPermissionCode(value: string): value is PermissionCode {
   return Object.hasOwn(PERMISSIONS, value);
 }
+
+/** Holding any of these makes MFA mandatory when enforcement is on (ADR 0011). */
+export const MFA_PRIVILEGED_PERMISSIONS = [
+  'roles.manage',
+  'users.manage',
+  'settings.manage',
+  'invoices.issue',
+  'invoices.void',
+  'payments.refund',
+  'branches.all',
+] as const satisfies readonly PermissionCode[];
