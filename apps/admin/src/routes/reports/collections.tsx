@@ -8,6 +8,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
 import { AppShell } from '../../components/AppShell';
+import { ExportButtons } from '../../components/ExportButtons';
 import { FormField } from '../../components/FormField';
 import { SelectField } from '../../components/Inputs';
 import { RequireAuth } from '../../components/RequireAuth';
@@ -42,6 +43,15 @@ export function CollectionsPage() {
     });
   }, [client, range.from, range.to, range.branchId]);
 
+  const exportFrom = new Date(`${range.from}T00:00:00`);
+  const exportTo = new Date(`${range.to}T00:00:00`);
+  exportTo.setDate(exportTo.getDate() + 1);
+  const exportQuery = {
+    from: exportFrom.toISOString(),
+    to: exportTo.toISOString(),
+    branchId: range.branchId || undefined,
+  };
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -71,6 +81,7 @@ export function CollectionsPage() {
           <button type="submit">Show</button>
         </div>
       </form>
+      <ExportButtons report="collections" query={exportQuery} />
       <ResourceView resource={report}>
         {(r) => {
           const m = (v: string) => (r.currency ? formatMoney(v, r.currency) : v);

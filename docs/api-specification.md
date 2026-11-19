@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 10 (2026-11-19).
+Updated: Phase 11 (2026-11-19).
 
 ## Conventions
 
@@ -170,6 +170,19 @@ References that look like card numbers are rejected.
 
 `POST /customer/auth/otp/request` returns **503 `OTP_DELIVERY_FAILED`** when the WhatsApp provider refuses the code.
 Manual retry (`POST /notifications/:id/retry`) keeps the attempt count; after the automatic limit it grants one more attempt.
+
+## Phase 11 endpoints (reports, ADR 0019)
+
+All scoped to permitted branches; `branchId` outside scope → 404. Periods are `[from, to)` ISO instants, max 366 days.
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/reports/dashboard?branchId=` | `reports.read` | New today, by status, overdue, approval/parts/completed/ready counts, collected today/month (net of refunds), interim outstanding, technician workload, 30-day warranty mix |
+| GET | `/reports/jobs?from&to&branchId&status&technicianId&categoryId&serviceType&page&pageSize` | `reports.read` + `jobs.read` | Job register (paged, max 100) |
+| GET | `/reports/technicians?from&to&branchId` | `reports.read` + `jobs.read` | Open jobs, completed, average/median turnaround hours |
+| GET | `/reports/parts?from&to&branchId` | `reports.read` + `inventory.read` | Usage (consumed/returned/net) and indicative stock valuation |
+| GET | `/reports/outstanding?branchId` | `reports.read` + `payments.read` | Interim receivables with aging buckets |
+| GET | `/reports/:report/export?format=csv\|xlsx\|pdf&…filters` | `reports.read` + `reports.export` + report's read permission | `report` ∈ jobs, technicians, parts, outstanding, collections, deliveries. Attachment, `Cache-Control: no-store`, audited. > 10,000 rows → `EXPORT_TOO_LARGE` |
 
 ### Customer API (customer access token; identity from token only)
 

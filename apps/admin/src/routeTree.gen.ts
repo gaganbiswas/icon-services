@@ -23,7 +23,12 @@ import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as JobsNewRouteImport } from './routes/jobs/new'
 import { Route as NotificationsIndexRouteImport } from './routes/notifications/index'
+import { Route as ReportsIndexRouteImport } from './routes/reports/index'
 import { Route as ReportsCollectionsRouteImport } from './routes/reports/collections'
+import { Route as ReportsJobsRouteImport } from './routes/reports/jobs'
+import { Route as ReportsOutstandingRouteImport } from './routes/reports/outstanding'
+import { Route as ReportsPartsRouteImport } from './routes/reports/parts'
+import { Route as ReportsTechniciansRouteImport } from './routes/reports/technicians'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings/notifications'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,9 +101,34 @@ const NotificationsIndexRoute = NotificationsIndexRouteImport.update({
   path: '/notifications/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/reports/',
+  path: '/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsCollectionsRoute = ReportsCollectionsRouteImport.update({
   id: '/reports/collections',
   path: '/reports/collections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsJobsRoute = ReportsJobsRouteImport.update({
+  id: '/reports/jobs',
+  path: '/reports/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsOutstandingRoute = ReportsOutstandingRouteImport.update({
+  id: '/reports/outstanding',
+  path: '/reports/outstanding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsPartsRoute = ReportsPartsRouteImport.update({
+  id: '/reports/parts',
+  path: '/reports/parts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsTechniciansRoute = ReportsTechniciansRouteImport.update({
+  id: '/reports/technicians',
+  path: '/reports/technicians',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
@@ -118,12 +148,17 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/outstanding': typeof ReportsOutstandingRoute
+  '/reports/parts': typeof ReportsPartsRoute
+  '/reports/technicians': typeof ReportsTechniciansRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/customers/': typeof CustomersIndexRoute
   '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -136,12 +171,17 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/outstanding': typeof ReportsOutstandingRoute
+  '/reports/parts': typeof ReportsPartsRoute
+  '/reports/technicians': typeof ReportsTechniciansRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/customers': typeof CustomersIndexRoute
   '/deliveries': typeof DeliveriesIndexRoute
   '/inventory': typeof InventoryIndexRoute
   '/jobs': typeof JobsIndexRoute
   '/notifications': typeof NotificationsIndexRoute
+  '/reports': typeof ReportsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -155,12 +195,17 @@ export interface FileRoutesById {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/outstanding': typeof ReportsOutstandingRoute
+  '/reports/parts': typeof ReportsPartsRoute
+  '/reports/technicians': typeof ReportsTechniciansRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/customers/': typeof CustomersIndexRoute
   '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -175,12 +220,17 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/jobs'
+    | '/reports/outstanding'
+    | '/reports/parts'
+    | '/reports/technicians'
     | '/settings/notifications'
     | '/customers/'
     | '/deliveries/'
     | '/inventory/'
     | '/jobs/'
     | '/notifications/'
+    | '/reports/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -193,12 +243,17 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/jobs'
+    | '/reports/outstanding'
+    | '/reports/parts'
+    | '/reports/technicians'
     | '/settings/notifications'
     | '/customers'
     | '/deliveries'
     | '/inventory'
     | '/jobs'
     | '/notifications'
+    | '/reports'
   id:
     | '__root__'
     | '/'
@@ -211,12 +266,17 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/jobs'
+    | '/reports/outstanding'
+    | '/reports/parts'
+    | '/reports/technicians'
     | '/settings/notifications'
     | '/customers/'
     | '/deliveries/'
     | '/inventory/'
     | '/jobs/'
     | '/notifications/'
+    | '/reports/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -230,12 +290,17 @@ export interface RootRouteChildren {
   JobsJobIdRoute: typeof JobsJobIdRoute
   JobsNewRoute: typeof JobsNewRoute
   ReportsCollectionsRoute: typeof ReportsCollectionsRoute
+  ReportsJobsRoute: typeof ReportsJobsRoute
+  ReportsOutstandingRoute: typeof ReportsOutstandingRoute
+  ReportsPartsRoute: typeof ReportsPartsRoute
+  ReportsTechniciansRoute: typeof ReportsTechniciansRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
   DeliveriesIndexRoute: typeof DeliveriesIndexRoute
   InventoryIndexRoute: typeof InventoryIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
   NotificationsIndexRoute: typeof NotificationsIndexRoute
+  ReportsIndexRoute: typeof ReportsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -338,11 +403,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/': {
+      id: '/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/collections': {
       id: '/reports/collections'
       path: '/reports/collections'
       fullPath: '/reports/collections'
       preLoaderRoute: typeof ReportsCollectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/jobs': {
+      id: '/reports/jobs'
+      path: '/reports/jobs'
+      fullPath: '/reports/jobs'
+      preLoaderRoute: typeof ReportsJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/outstanding': {
+      id: '/reports/outstanding'
+      path: '/reports/outstanding'
+      fullPath: '/reports/outstanding'
+      preLoaderRoute: typeof ReportsOutstandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/parts': {
+      id: '/reports/parts'
+      path: '/reports/parts'
+      fullPath: '/reports/parts'
+      preLoaderRoute: typeof ReportsPartsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/technicians': {
+      id: '/reports/technicians'
+      path: '/reports/technicians'
+      fullPath: '/reports/technicians'
+      preLoaderRoute: typeof ReportsTechniciansRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/notifications': {
@@ -366,12 +466,17 @@ const rootRouteChildren: RootRouteChildren = {
   JobsJobIdRoute: JobsJobIdRoute,
   JobsNewRoute: JobsNewRoute,
   ReportsCollectionsRoute: ReportsCollectionsRoute,
+  ReportsJobsRoute: ReportsJobsRoute,
+  ReportsOutstandingRoute: ReportsOutstandingRoute,
+  ReportsPartsRoute: ReportsPartsRoute,
+  ReportsTechniciansRoute: ReportsTechniciansRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   CustomersIndexRoute: CustomersIndexRoute,
   DeliveriesIndexRoute: DeliveriesIndexRoute,
   InventoryIndexRoute: InventoryIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
   NotificationsIndexRoute: NotificationsIndexRoute,
+  ReportsIndexRoute: ReportsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

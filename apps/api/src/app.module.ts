@@ -9,6 +9,7 @@ import { CustomerAuthModule } from './customer-auth/customer-auth.module.js';
 import { CustomerPortalModule } from './customer-portal/customer-portal.module.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { DeliveryModule } from './delivery/delivery.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { FilesModule } from './files/files.module.js';
 import type { Env } from './config/env.js';
@@ -51,6 +52,7 @@ export class AppModule {
         InventoryModule,
         PaymentsModule,
         DeliveryModule,
+        ReportsModule,
         NotificationsModule,
         CustomerPortalModule,
       ],

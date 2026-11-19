@@ -1,34 +1,34 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 
+import { AppShell } from '../components/AppShell';
+import { Dashboard } from '../components/Dashboard';
 import { RequireAuth } from '../components/RequireAuth';
 import { useAuth } from '../lib/auth';
+import { useCan } from '../lib/permissions';
 
 export const Route = createFileRoute('/')({
   component: () => (
     <RequireAuth>
-      <HomePage />
+      <AppShell title="Home">
+        <HomePage />
+      </AppShell>
     </RequireAuth>
   ),
 });
 
 export function HomePage() {
-  const { state, signOut } = useAuth();
+  const { state } = useAuth();
+  const canDashboard = useCan('reports.read');
   if (state.status !== 'authenticated') return null;
   const { me } = state;
   return (
-    <main>
-      <header className="page-header">
-        <div>
-          <h1>ICON INFOSYS SERVICE MANAGEMENT</h1>
-          <p className="muted">Staff admin panel · {me.organization.displayName}</p>
-        </div>
-        <button type="button" className="secondary" onClick={() => void signOut()}>
-          Sign out
-        </button>
-      </header>
+    <>
+      {canDashboard ? <Dashboard /> : null}
       <section aria-labelledby="account-heading">
         <h2 id="account-heading">Signed in as {me.fullName}</h2>
         <dl className="summary">
+          <dt>Organization</dt>
+          <dd>{me.organization.displayName}</dd>
           <dt>Email</dt>
           <dd>{me.email}</dd>
           <dt>Roles</dt>
@@ -44,7 +44,6 @@ export function HomePage() {
           <Link to="/change-password">Change password</Link>
         </p>
       </section>
-      <p className="muted">Customer, job and intake screens will be added in Phase 3.</p>
-    </main>
+    </>
   );
 }

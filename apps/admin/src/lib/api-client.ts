@@ -120,6 +120,52 @@ export class ApiClient {
     return this.authorized<T>(path, { method: 'PUT', body });
   }
 
+  /** Authenticated file download (report exports); refreshes once on 401. */
+  async download(
+    path: string,
+    query: Record<string, string | undefined>,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== '') params.set(key, value);
+    }
+    const url = `${path}?${params.toString()}`;
+    try {
+      return await this.sendDownload(url);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401 || !(await this.refresh()))
+        throw error;
+      return this.sendDownload(url);
+    }
+  }
+
+  private async sendDownload(path: string): Promise<{ blob: Blob; filename: string }> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}${API_BASE_PATH}${path}`, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+    } catch {
+      throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection.');
+    }
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as ErrorResponse | null;
+      throw new ApiError(
+        response.status,
+        payload?.error.code ?? 'INTERNAL_ERROR',
+        payload?.error.message ?? 'Something went wrong. Please try again.',
+        payload?.error.details ?? [],
+      );
+    }
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'export';
+    return { blob: await response.blob(), filename };
+  }
+
   /** Multipart upload of a single file in the "file" field. */
   upload<T>(path: string, file: Blob, fileName: string): Promise<T> {
     const form = new FormData();

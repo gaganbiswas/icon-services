@@ -12,6 +12,7 @@ export * from './inventory.js';
 export * from './jobs.js';
 export * from './lifecycle.js';
 export * from './money.js';
+export * from './reports.js';
 export * from './notification-templates.js';
 export * from './pagination.js';
 export * from './payments.js';

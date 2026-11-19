@@ -21,8 +21,6 @@ export function AppShell({
   const canNotifications = useCan('notifications.read');
   const canInventory = useCan('inventory.read');
   const canReports = useCan('reports.read');
-  const canPayments = useCan('payments.read');
-  const canCollections = canReports && canPayments;
   const canDeliveries = useCan('deliveries.read');
   const canSettings = useCan('settings.read');
   return (
@@ -82,10 +80,10 @@ export function AppShell({
                 </Link>
               </li>
             ) : null}
-            {canCollections ? (
+            {canReports ? (
               <li>
-                <Link to="/reports/collections" activeProps={{ 'aria-current': 'page' }}>
-                  Collections
+                <Link to="/reports" activeProps={{ 'aria-current': 'page' }}>
+                  Reports
                 </Link>
               </li>
             ) : null}
