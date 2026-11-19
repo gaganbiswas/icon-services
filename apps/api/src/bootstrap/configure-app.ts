@@ -30,8 +30,16 @@ export function configureApp(app: INestApplication, env: Env): void {
     // Explicit allow-list only; an empty list disables cross-origin access.
     origin: env.API_CORS_ORIGINS,
     credentials: true,
-    allowedHeaders: ['authorization', 'content-type', 'x-request-id', CSRF_HEADER],
-    exposedHeaders: ['x-request-id'],
+    // Idempotency-Key: job intake, payments, refunds, hand-over (browser preflight must allow it).
+    allowedHeaders: [
+      'authorization',
+      'content-type',
+      'x-request-id',
+      'idempotency-key',
+      CSRF_HEADER,
+    ],
+    // Content-Disposition: export/download file names; Idempotent-Replayed: safe-retry signal.
+    exposedHeaders: ['x-request-id', 'content-disposition', 'idempotent-replayed'],
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     maxAge: 600,
   });

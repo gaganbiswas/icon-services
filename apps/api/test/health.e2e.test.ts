@@ -96,6 +96,31 @@ describe('Health endpoints (HTTP, mocked dependencies)', () => {
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  it('lets browsers send the headers the admin panel uses (preflight) and read download names', async () => {
+    // Regression: Idempotency-Key was missing, so browsers blocked job intake, payments and hand-over.
+    const preflight = await request(server())
+      .options('/api/v1/jobs')
+      .set('Origin', 'http://localhost:5173')
+      .set('Access-Control-Request-Method', 'POST')
+      .set(
+        'Access-Control-Request-Headers',
+        'authorization,content-type,idempotency-key,x-icon-csrf',
+      );
+    expect(preflight.status).toBe(204);
+    const allowedHeaders = String(preflight.headers['access-control-allow-headers'])
+      .toLowerCase()
+      .split(',');
+    for (const header of ['authorization', 'content-type', 'idempotency-key', 'x-icon-csrf']) {
+      expect(allowedHeaders).toContain(header);
+    }
+    const simple = await request(server())
+      .get('/api/v1/health/live')
+      .set('Origin', 'http://localhost:5173');
+    const exposed = String(simple.headers['access-control-expose-headers']).toLowerCase();
+    expect(exposed).toContain('content-disposition');
+    expect(exposed).toContain('idempotent-replayed');
+  });
+
   it('serves the OpenAPI document generated from the controllers', async () => {
     const response = await request(server()).get('/api/docs-json').expect(200);
     const body = response.body as { paths: Record<string, unknown> };

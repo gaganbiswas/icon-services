@@ -14,7 +14,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "dev:worker": "node --watch --enable-source-maps dist/worker.js",
     "start:worker": "node --enable-source-maps dist/worker.js",
-    "test:perf": "PERF=1 vitest run --config vitest.integration.config.ts test/performance.int.test.ts --silent=false"
+    "test:perf": "PERF=1 vitest run --config vitest.integration.config.ts test/performance.int.test.ts --silent=false",
+    "uat:data": "node scripts/uat-data.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1171.0",

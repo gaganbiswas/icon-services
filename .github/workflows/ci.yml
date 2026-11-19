@@ -93,6 +93,29 @@ jobs:
           SMTP_HOST_PORT: '1025'
           MAILPIT_API_URL: http://localhost:8025
 
+      - name: Staff workflow E2E (Chromium; isolated icon_service_e2e database)
+        run: bun run test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://icon:ci-only-password@localhost:5432/icon_service_test?schema=public
+          REDIS_URL: redis://localhost:6379
+          JWT_ACCESS_SECRET: ci-only-e2e-secret-not-used-anywhere-else-0000
+          OTP_PEPPER: ci-only-otp-pepper-not-used-anywhere-else-000
+          S3_ENDPOINT: http://localhost:8333
+          S3_REGION: local
+          S3_ACCESS_KEY_ID: ci-only-access-key
+          S3_SECRET_ACCESS_KEY: ci-only-secret-key
+          S3_BUCKET: icon-test
+          S3_FORCE_PATH_STYLE: 'true'
+
+      - name: Keep E2E traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-traces
+          path: apps/admin/test-results
+          retention-days: 7
+
   security:
     name: Dependency audit and secret scan
     runs-on: ubuntu-24.04

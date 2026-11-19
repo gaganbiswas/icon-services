@@ -28,7 +28,8 @@
     "db:status": "bun run --filter @icon/database db:status",
     "db:seed:dev": "bunx turbo run build --filter=@icon/database && bun run --filter @icon/database db:seed:dev",
     "backup:drill:local": "infra/scripts/drill-local.sh",
-    "test:perf": "bun run --filter @icon/api test:perf"
+    "test:perf": "bun run --filter @icon/api test:perf",
+    "test:e2e": "bun run --filter @icon/admin test:e2e"
   },
   "devDependencies": {
     "prettier": "3.10.1",
