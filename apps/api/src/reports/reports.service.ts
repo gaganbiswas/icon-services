@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   AGING_BUCKETS,
   type Dashboard,
+  type GstSummary,
   type JobRegisterQuery,
   type JobRegisterRow,
   type OutstandingReport,
@@ -362,6 +363,7 @@ export class ReportsService {
         billed: Prisma.Decimal;
         paid: Prisma.Decimal;
         due: Prisma.Decimal;
+        basis: 'INVOICE' | 'ESTIMATE';
         age_days: number;
       }[]
     >`
@@ -371,18 +373,30 @@ export class ReportsService {
         ORDER BY e.job_id, e.version DESC),
       paid AS (
         SELECT p.job_id, sum(p.amount - p.refunded_total) AS paid FROM payments p
-        WHERE p.organization_id = ${org}::uuid AND p.status = 'RECORDED' AND p.job_id IS NOT NULL GROUP BY p.job_id)
+        WHERE p.organization_id = ${org}::uuid AND p.status = 'RECORDED' AND p.job_id IS NOT NULL GROUP BY p.job_id),
+      invoiced AS (
+        SELECT i.job_id, sum(i.total - i.credited_total) AS net, min(i.invoice_date) AS first_date FROM invoices i
+        WHERE i.organization_id = ${org}::uuid AND i.status IN ('ISSUED', 'CANCELLED') GROUP BY i.job_id),
+      billed AS (
+        SELECT j.id AS job_id,
+               coalesce(iv.net, CASE WHEN ce.status = 'APPROVED' THEN ce.customer_payable END) AS billed,
+               CASE WHEN iv.job_id IS NOT NULL THEN 'INVOICE' ELSE 'ESTIMATE' END AS basis,
+               coalesce(iv.first_date::timestamptz, j.completed_at, j.updated_at) AS age_from
+        FROM service_jobs j
+        LEFT JOIN current_estimate ce ON ce.job_id = j.id
+        LEFT JOIN invoiced iv ON iv.job_id = j.id
+        WHERE j.organization_id = ${org}::uuid)
       SELECT j.id AS job_id, j.job_number, b.code AS branch_code, c.name AS customer_name, j.status::text AS status, j.completed_at,
-             ce.customer_payable AS billed, coalesce(pd.paid, 0) AS paid, ce.customer_payable - coalesce(pd.paid, 0) AS due,
-             greatest(0, floor(extract(epoch FROM (now() - coalesce(j.completed_at, j.updated_at))) / 86400))::int AS age_days
+             bl.billed, coalesce(pd.paid, 0) AS paid, bl.billed - coalesce(pd.paid, 0) AS due, bl.basis,
+             greatest(0, floor(extract(epoch FROM (now() - bl.age_from)) / 86400))::int AS age_days
       FROM service_jobs j
-      JOIN current_estimate ce ON ce.job_id = j.id AND ce.status = 'APPROVED'
+      JOIN billed bl ON bl.job_id = j.id AND bl.billed IS NOT NULL
       LEFT JOIN paid pd ON pd.job_id = j.id
       JOIN branches b ON b.id = j.branch_id
       JOIN customers c ON c.id = j.customer_id
       WHERE j.organization_id = ${org}::uuid AND ${this.branchSql(Prisma.sql`j.branch_id`, branches)}
         AND j.status::text = ANY(${[...FINISHED]}::text[])
-        AND ce.customer_payable - coalesce(pd.paid, 0) > 0
+        AND bl.billed - coalesce(pd.paid, 0) > 0
       ORDER BY age_days DESC, j.job_number`;
   }
 
@@ -416,10 +430,11 @@ export class ReportsService {
         due: due.toFixed(4),
         ageDays: r.age_days,
         bucket,
+        basis: r.basis,
       } as const;
     });
     return {
-      basis: 'APPROVED_ESTIMATE',
+      basis: 'INVOICE_OR_ESTIMATE',
       currency,
       total: total.toFixed(4),
       buckets: AGING_BUCKETS.map((bucket) => ({
@@ -428,6 +443,139 @@ export class ReportsService {
         due: (totals.get(bucket)?.due ?? new Decimal(0)).toFixed(4),
       })),
       rows: mapped,
+    };
+  }
+
+  /**
+   * GST summary for a period (ADR 0022): invoices by invoice date, credit notes by
+   * note date; net = invoices − credit notes. Feeds return preparation; not a filed return.
+   */
+  async gstSummary(
+    principal: Principal,
+    q: { from: string; to: string; branchId?: string | undefined },
+  ): Promise<GstSummary> {
+    const org = principal.organizationId;
+    const inv = this.branchSql(Prisma.sql`i.branch_id`, this.scope(principal, q.branchId));
+    const cnScope = this.branchSql(Prisma.sql`cn.branch_id`, this.scope(principal, q.branchId));
+    const from = new Date(`${q.from}T00:00:00Z`);
+    const to = new Date(`${q.to}T00:00:00Z`);
+    type Sums = {
+      count: number;
+      taxable: Prisma.Decimal | null;
+      cgst: Prisma.Decimal | null;
+      sgst: Prisma.Decimal | null;
+      igst: Prisma.Decimal | null;
+      total: Prisma.Decimal | null;
+    };
+    const [[invoices], [credits], segments, rates, hsn, { currency }] = await Promise.all([
+      this.prisma.$queryRaw<Sums[]>`
+        SELECT count(*)::int AS count, sum(i.taxable_total) AS taxable, sum(i.cgst_total) AS cgst, sum(i.sgst_total) AS sgst,
+               sum(i.igst_total) AS igst, sum(i.total) AS total
+        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED')
+          AND i.invoice_date BETWEEN ${from}::date AND ${to}::date`,
+      this.prisma.$queryRaw<Sums[]>`
+        SELECT count(*)::int AS count, sum(cn.taxable_total) AS taxable, sum(cn.cgst_total) AS cgst, sum(cn.sgst_total) AS sgst,
+               sum(cn.igst_total) AS igst, sum(cn.total) AS total
+        FROM credit_notes cn WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date`,
+      this.prisma.$queryRaw<
+        { segment: 'B2B' | 'B2C'; count: number; taxable: Prisma.Decimal; tax: Prisma.Decimal }[]
+      >`
+        SELECT CASE WHEN i.recipient->>'gstin' IS NOT NULL THEN 'B2B' ELSE 'B2C' END AS segment,
+               count(*)::int AS count, sum(i.taxable_total) AS taxable, sum(i.tax_total) AS tax
+        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED')
+          AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
+        GROUP BY 1 ORDER BY 1`,
+      this.prisma.$queryRaw<
+        {
+          gst_rate: Prisma.Decimal;
+          taxable: Prisma.Decimal;
+          cgst: Prisma.Decimal;
+          sgst: Prisma.Decimal;
+          igst: Prisma.Decimal;
+        }[]
+      >`
+        WITH movements AS (
+          SELECT l.gst_rate, l.taxable_value AS taxable, l.cgst_amount AS cgst, l.sgst_amount AS sgst, l.igst_amount AS igst
+          FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
+          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
+          UNION ALL
+          SELECT l.gst_rate, -cl.taxable_value, -cl.cgst_amount, -cl.sgst_amount, -cl.igst_amount
+          FROM credit_note_lines cl JOIN credit_notes cn ON cn.id = cl.credit_note_id JOIN invoice_lines l ON l.id = cl.invoice_line_id
+          WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date)
+        SELECT gst_rate, sum(taxable) AS taxable, sum(cgst) AS cgst, sum(sgst) AS sgst, sum(igst) AS igst
+        FROM movements GROUP BY gst_rate ORDER BY gst_rate`,
+      this.prisma.$queryRaw<
+        {
+          hsn_sac: string;
+          gst_rate: Prisma.Decimal;
+          quantity: Prisma.Decimal;
+          taxable: Prisma.Decimal;
+          cgst: Prisma.Decimal;
+          sgst: Prisma.Decimal;
+          igst: Prisma.Decimal;
+        }[]
+      >`
+        WITH movements AS (
+          SELECT l.hsn_sac, l.gst_rate, l.quantity, l.taxable_value AS taxable, l.cgst_amount AS cgst, l.sgst_amount AS sgst, l.igst_amount AS igst
+          FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
+          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
+          UNION ALL
+          SELECT l.hsn_sac, l.gst_rate, -cl.quantity, -cl.taxable_value, -cl.cgst_amount, -cl.sgst_amount, -cl.igst_amount
+          FROM credit_note_lines cl JOIN credit_notes cn ON cn.id = cl.credit_note_id JOIN invoice_lines l ON l.id = cl.invoice_line_id
+          WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date)
+        SELECT hsn_sac, gst_rate, sum(quantity) AS quantity, sum(taxable) AS taxable, sum(cgst) AS cgst, sum(sgst) AS sgst, sum(igst) AS igst
+        FROM movements GROUP BY hsn_sac, gst_rate ORDER BY hsn_sac, gst_rate`,
+      this.settings.get(org, 'money'),
+    ]);
+    const m = (v: Prisma.Decimal | null | undefined) =>
+      new Decimal(v?.toString() ?? '0').toFixed(2);
+    const block = (s: Sums | undefined) => ({
+      count: s?.count ?? 0,
+      taxable: m(s?.taxable),
+      cgst: m(s?.cgst),
+      sgst: m(s?.sgst),
+      igst: m(s?.igst),
+      total: m(s?.total),
+    });
+    const a = block(invoices);
+    const c = block(credits);
+    const diff = (k: 'taxable' | 'cgst' | 'sgst' | 'igst' | 'total') =>
+      new Decimal(a[k]).minus(c[k]).toFixed(2);
+    return {
+      currency: currency ?? '',
+      from: q.from,
+      to: q.to,
+      invoices: a,
+      creditNotes: c,
+      net: {
+        taxable: diff('taxable'),
+        cgst: diff('cgst'),
+        sgst: diff('sgst'),
+        igst: diff('igst'),
+        total: diff('total'),
+      },
+      bySegment: segments.map((s) => ({
+        segment: s.segment,
+        count: s.count,
+        taxable: m(s.taxable),
+        tax: m(s.tax),
+      })),
+      byRate: rates.map((r) => ({
+        gstRate: new Decimal(r.gst_rate.toString()).toString(),
+        taxable: m(r.taxable),
+        cgst: m(r.cgst),
+        sgst: m(r.sgst),
+        igst: m(r.igst),
+      })),
+      byHsn: hsn.map((h) => ({
+        hsnSac: h.hsn_sac,
+        gstRate: new Decimal(h.gst_rate.toString()).toString(),
+        quantity: new Decimal(h.quantity.toString()).toString(),
+        taxable: m(h.taxable),
+        cgst: m(h.cgst),
+        sgst: m(h.sgst),
+        igst: m(h.igst),
+      })),
     };
   }
 

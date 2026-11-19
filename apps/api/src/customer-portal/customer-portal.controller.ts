@@ -35,6 +35,7 @@ import {
   type DocumentLink,
   ReceiptLayoutSchema,
   type StoredFileInfo,
+  type CustomerInvoice,
 } from '@icon/contracts';
 import type { PrismaClient } from '@icon/database';
 import type { Response } from 'express';
@@ -214,6 +215,68 @@ export class CustomerPortalController {
   @Get('payments')
   myPayments(@CurrentCustomer() me: CustomerPrincipal): Promise<CustomerPayment[]> {
     return this.payments.customerPayments(me.organizationId, me.customerId);
+  }
+
+  @Get('invoices')
+  async myInvoices(@CurrentCustomer() me: CustomerPrincipal): Promise<CustomerInvoice[]> {
+    const rows = await this.prisma.invoice.findMany({
+      where: {
+        organizationId: me.organizationId,
+        customerId: me.customerId,
+        status: { in: ['ISSUED', 'CANCELLED'] },
+      },
+      orderBy: [{ invoiceDate: 'desc' }, { invoiceNumber: 'desc' }],
+      include: {
+        job: { select: { jobNumber: true } },
+        creditNotes: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      invoiceNumber: r.invoiceNumber ?? '',
+      invoiceDate: r.invoiceDate?.toISOString().slice(0, 10) ?? '',
+      jobNumber: r.job.jobNumber,
+      currency: r.currency,
+      total: r.total.toFixed(2),
+      creditedTotal: r.creditedTotal.toFixed(2),
+      balance: r.total.minus(r.creditedTotal).minus(r.allocatedTotal).toFixed(2),
+      status: r.status === 'CANCELLED' ? 'CANCELLED' : 'ISSUED',
+      creditNotes: r.creditNotes.map((c) => ({
+        id: c.id,
+        number: c.creditNoteNumber,
+        date: c.noteDate.toISOString().slice(0, 10),
+        total: c.total.toFixed(2),
+      })),
+    }));
+  }
+
+  @Post('invoices/:id/pdf')
+  async invoicePdf(
+    @CurrentCustomer() me: CustomerPrincipal,
+    @Param('id', uuidPipe) id: string,
+  ): Promise<DocumentLink> {
+    const owned = await this.prisma.invoice.count({
+      where: {
+        id,
+        organizationId: me.organizationId,
+        customerId: me.customerId,
+        status: { in: ['ISSUED', 'CANCELLED'] },
+      },
+    });
+    if (owned !== 1) throw AppException.notFound('Invoice');
+    return this.documents.taxInvoice(me.organizationId, id, { userId: null });
+  }
+
+  @Post('credit-notes/:id/pdf')
+  async creditNotePdf(
+    @CurrentCustomer() me: CustomerPrincipal,
+    @Param('id', uuidPipe) id: string,
+  ): Promise<DocumentLink> {
+    const owned = await this.prisma.creditNote.count({
+      where: { id, organizationId: me.organizationId, invoice: { customerId: me.customerId } },
+    });
+    if (owned !== 1) throw AppException.notFound('Credit note');
+    return this.documents.creditNote(me.organizationId, id, { userId: null });
   }
 
   @Post('payments/:id/receipt')

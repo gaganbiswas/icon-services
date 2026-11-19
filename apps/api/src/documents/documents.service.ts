@@ -6,7 +6,10 @@ import {
   type DocumentLink,
   PAYMENT_METHOD_LABELS,
   SETTINGS,
+  amountInWordsINR,
   formatMoney,
+  stateName,
+  summarizeByHsn,
 } from '@icon/contracts';
 import { Prisma, type PrismaClient } from '@icon/database';
 
@@ -30,6 +33,7 @@ import {
   renderPaymentReceiptHtml,
 } from './payment-receipt.template.js';
 import { PdfRenderer } from './pdf-renderer.service.js';
+import { type TaxDocSnapshot, renderTaxDocumentHtml } from './tax-invoice.template.js';
 
 @Injectable()
 export class DocumentsService {
@@ -431,6 +435,243 @@ export class DocumentsService {
       termsArePlaceholder: delivery.challanTerms === SETTINGS.delivery.default.challanTerms,
       generatedAt: `${formatDateTime(new Date(), timeZone)} (${timeZone})`,
     };
+  }
+
+  /** Tax invoice PDF (issued invoices only). Generated once; reprints return the same snapshot. */
+  async taxInvoice(
+    organizationId: string,
+    invoiceId: string,
+    actor: { userId: string | null },
+  ): Promise<DocumentLink> {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, organizationId, status: { not: 'DRAFT' } },
+      include: {
+        lines: { orderBy: { position: 'asc' } },
+        taxSummaries: true,
+        job: { select: { jobNumber: true } },
+      },
+    });
+    if (!invoice) throw AppException.notFound('Invoice');
+    const [business, invoicing] = await Promise.all([
+      this.settings.get(organizationId, 'business'),
+      this.settings.get(organizationId, 'invoicing'),
+    ]);
+    const m2 = (v: { toFixed(n: number): string }) => v.toFixed(2);
+    const snapshot: TaxDocSnapshot = {
+      kind: 'TAX_INVOICE',
+      number: invoice.invoiceNumber ?? '',
+      date: invoice.invoiceDate?.toISOString().slice(0, 10) ?? '',
+      reference: null,
+      reason: null,
+      supplier: invoice.supplier as unknown as TaxDocSnapshot['supplier'],
+      recipient: invoice.recipient as unknown as TaxDocSnapshot['recipient'],
+      supplyType: invoice.supplyType,
+      placeOfSupply: {
+        code: invoice.placeOfSupplyCode,
+        name: stateName(invoice.placeOfSupplyCode) ?? '',
+      },
+      jobNumber: invoice.job.jobNumber,
+      currency: invoice.currency,
+      lines: invoice.lines.map((l) => ({
+        description: l.description,
+        hsnSac: l.hsnSac,
+        quantity: l.quantity.toString(),
+        unit: l.unit,
+        unitPrice: m2(l.unitPrice),
+        discount: m2(l.discount),
+        taxableValue: m2(l.taxableValue),
+        gstRate: l.gstRate.toString(),
+        cgstAmount: m2(l.cgstAmount),
+        sgstAmount: m2(l.sgstAmount),
+        igstAmount: m2(l.igstAmount),
+      })),
+      hsnSummary: invoice.taxSummaries
+        .map((t) => ({
+          hsnSac: t.hsnSac,
+          gstRate: t.gstRate.toString(),
+          taxableValue: m2(t.taxableValue),
+          cgstAmount: m2(t.cgstAmount),
+          sgstAmount: m2(t.sgstAmount),
+          igstAmount: m2(t.igstAmount),
+        }))
+        .sort((a, b) => a.hsnSac.localeCompare(b.hsnSac)),
+      totals: {
+        taxable: m2(invoice.taxableTotal),
+        cgst: m2(invoice.cgstTotal),
+        sgst: m2(invoice.sgstTotal),
+        igst: m2(invoice.igstTotal),
+        roundOff: m2(invoice.roundOff),
+        total: m2(invoice.total),
+      },
+      amountInWords: amountInWordsINR(m2(invoice.total)),
+      terms: invoice.terms,
+      termsArePlaceholder: invoice.terms === SETTINGS.invoicing.default.terms,
+      declaration: invoicing.declaration,
+      signatory: {
+        name: business?.signatoryName ?? null,
+        designation: business?.signatoryDesignation ?? null,
+      },
+      contact: business
+        ? [...business.phones, ...business.emails, business.website ?? '']
+            .filter(Boolean)
+            .join(' · ')
+        : '',
+      generatedAt: new Date().toISOString(),
+    };
+    return this.generateOnce(
+      organizationId,
+      invoice.branchId,
+      'invoice',
+      invoiceId,
+      'TAX_INVOICE',
+      snapshot,
+      actor,
+    );
+  }
+
+  /** Credit note PDF from its immutable snapshot. */
+  async creditNote(
+    organizationId: string,
+    creditNoteId: string,
+    actor: { userId: string | null },
+  ): Promise<DocumentLink> {
+    const note = await this.prisma.creditNote.findFirst({
+      where: { id: creditNoteId, organizationId },
+      include: { invoice: { select: { job: { select: { jobNumber: true } } } } },
+    });
+    if (!note) throw AppException.notFound('Credit note');
+    const s = note.snapshot as unknown as {
+      noteDate: string;
+      reason: string;
+      invoice: { number: string };
+      supplier: TaxDocSnapshot['supplier'];
+      recipient: TaxDocSnapshot['recipient'];
+      supplyType: TaxDocSnapshot['supplyType'];
+      placeOfSupplyCode: string;
+      currency: string;
+      lines: TaxDocSnapshot['lines'];
+      totals: TaxDocSnapshot['totals'];
+      amountInWords: string;
+    };
+    const business = await this.settings.get(organizationId, 'business');
+    const snapshot: TaxDocSnapshot = {
+      kind: 'CREDIT_NOTE',
+      number: note.creditNoteNumber,
+      date: s.noteDate,
+      reference: { label: 'Against invoice', value: s.invoice.number },
+      reason: s.reason,
+      supplier: s.supplier,
+      recipient: s.recipient,
+      supplyType: s.supplyType,
+      placeOfSupply: { code: s.placeOfSupplyCode, name: stateName(s.placeOfSupplyCode) ?? '' },
+      jobNumber: note.invoice.job.jobNumber,
+      currency: s.currency,
+      lines: s.lines,
+      hsnSummary: summarizeByHsn(
+        s.lines.map((l) => ({
+          hsnSac: l.hsnSac,
+          gstRate: l.gstRate,
+          taxableValue: l.taxableValue,
+          cgstAmount: l.cgstAmount,
+          sgstAmount: l.sgstAmount,
+          igstAmount: l.igstAmount,
+          cgstRate: '0',
+          sgstRate: '0',
+          igstRate: '0',
+          lineTotal: '0',
+        })),
+      ),
+      totals: s.totals,
+      amountInWords: s.amountInWords,
+      terms: null,
+      termsArePlaceholder: false,
+      declaration: null,
+      signatory: {
+        name: business?.signatoryName ?? null,
+        designation: business?.signatoryDesignation ?? null,
+      },
+      contact: business ? [...business.phones, ...business.emails].join(' · ') : '',
+      generatedAt: new Date().toISOString(),
+    };
+    return this.generateOnce(
+      organizationId,
+      note.branchId,
+      'credit_note',
+      creditNoteId,
+      'CREDIT_NOTE',
+      snapshot,
+      actor,
+    );
+  }
+
+  private async generateOnce(
+    organizationId: string,
+    branchId: string,
+    entityType: string,
+    entityId: string,
+    documentType: 'TAX_INVOICE' | 'CREDIT_NOTE',
+    snapshot: TaxDocSnapshot,
+    actor: { userId: string | null },
+  ): Promise<DocumentLink> {
+    const existing = await this.prisma.document.findFirst({
+      where: { organizationId, entityType, entityId, documentType },
+      orderBy: { version: 'desc' },
+      select: { id: true, documentNumber: true, version: true, fileId: true },
+    });
+    if (existing) return this.link(organizationId, existing);
+    const pdf = await this.renderer.render(renderTaxDocumentHtml(snapshot));
+    try {
+      const document = await this.prisma.$transaction(async (tx) => {
+        const fileId = await this.files.storeGenerated(
+          organizationId,
+          pdf,
+          `${documentType.toLowerCase()}-${snapshot.number}.pdf`,
+          'application/pdf',
+          tx,
+        );
+        const created = await tx.document.create({
+          data: {
+            organizationId,
+            branchId,
+            documentType,
+            entityType,
+            entityId,
+            documentNumber: snapshot.number,
+            layout: 'A4',
+            version: 1,
+            fileId,
+            snapshot: snapshot as unknown as Prisma.InputJsonValue,
+            generatedById: actor.userId,
+          },
+          select: { id: true, documentNumber: true, version: true, fileId: true },
+        });
+        await this.audit.record(tx, {
+          organizationId,
+          branchId,
+          actorUserId: actor.userId,
+          actorType: actor.userId ? 'USER' : 'SYSTEM',
+          action: 'document.generated',
+          entityType: 'document',
+          entityId: created.id,
+          after: { documentType, entityId },
+        });
+        return created;
+      });
+      return await this.link(organizationId, document);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return this.generateOnce(
+          organizationId,
+          branchId,
+          entityType,
+          entityId,
+          documentType,
+          snapshot,
+          actor,
+        );
+      }
+      throw error;
+    }
   }
 
   private async link(

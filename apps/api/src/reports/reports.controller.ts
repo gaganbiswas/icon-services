@@ -2,6 +2,9 @@ import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   type Dashboard,
+  type DateRange,
+  DateRangeSchema,
+  type GstSummary,
   EXPORTABLE_REPORTS,
   ExportQuerySchema,
   type JobRegisterQuery,
@@ -77,6 +80,15 @@ export class ReportsController {
     @Query(new ZodValidationPipe(BranchQuery)) q: z.infer<typeof BranchQuery>,
   ): Promise<OutstandingReport> {
     return this.reports.outstanding(principal, q.branchId);
+  }
+
+  @Get('gst-summary')
+  @RequirePermissions('reports.read', 'invoices.read')
+  gstSummary(
+    @CurrentPrincipal() principal: Principal,
+    @Query(new ZodValidationPipe(DateRangeSchema)) q: DateRange,
+  ): Promise<GstSummary> {
+    return this.reports.gstSummary(principal, q);
   }
 
   /** CSV / XLSX / PDF export. Needs reports.export plus the report's own read permission; audited. */

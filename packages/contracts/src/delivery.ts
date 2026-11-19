@@ -79,7 +79,7 @@ export const BalanceSchema = z.object({
   billed: z.string(),
   paid: z.string(),
   due: z.string(),
-  basis: z.enum(['APPROVED_ESTIMATE', 'NONE']),
+  basis: z.enum(['INVOICE', 'APPROVED_ESTIMATE', 'NONE']),
 });
 export type Balance = z.infer<typeof BalanceSchema>;
 

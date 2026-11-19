@@ -14,6 +14,8 @@ export const EXPORTABLE_REPORTS = [
   'outstanding',
   'collections',
   'deliveries',
+  'invoices',
+  'gst-summary',
 ] as const;
 export type ExportableReport = (typeof EXPORTABLE_REPORTS)[number];
 
@@ -150,10 +152,12 @@ export const OutstandingRowSchema = z.object({
   paid: z.string(),
   due: z.string(),
   ageDays: z.number().int(),
+  /** INVOICE when the job has issued invoices (net of credit notes), else the approved estimate. */
+  basis: z.enum(['INVOICE', 'ESTIMATE']),
   bucket: z.enum(AGING_BUCKETS),
 });
 export const OutstandingReportSchema = z.object({
-  basis: z.literal('APPROVED_ESTIMATE'),
+  basis: z.literal('INVOICE_OR_ESTIMATE'),
   currency: z.string().nullable(),
   total: z.string(),
   buckets: z.array(
@@ -164,3 +168,9 @@ export const OutstandingReportSchema = z.object({
 export type OutstandingReport = z.infer<typeof OutstandingReportSchema>;
 
 export const ExportQuerySchema = z.object({ format: z.enum(EXPORT_FORMATS) });
+
+/** Date range for tax reports (inclusive calendar dates, business time zone). */
+export const DateRangeSchema = z
+  .object({ from: z.iso.date(), to: z.iso.date(), branchId: z.uuid().optional() })
+  .refine((q) => q.from <= q.to, { path: ['to'], message: 'Must be on or after "from"' });
+export type DateRange = z.infer<typeof DateRangeSchema>;

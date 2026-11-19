@@ -15,6 +15,7 @@ export const TEMPLATE_PARAMETERS: Record<NotificationEventName, readonly string[
   ESTIMATE_DECISION_RECORDED: ['jobNumber', 'decision'],
   PAYMENT_RECEIVED: ['jobNumber', 'receiptNumber', 'amount', 'currency'],
   DELIVERY_CONFIRMED: ['jobNumber'],
+  INVOICE_ISSUED: ['jobNumber', 'invoiceNumber', 'amount', 'currency'],
 };
 
 export function templateParameters(

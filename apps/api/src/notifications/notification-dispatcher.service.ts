@@ -46,6 +46,10 @@ function emailText(event: NotificationEventName, payload: Record<string, string 
   if (payload['statusLabel']) lines.push(`Status: ${payload['statusLabel']}`);
   if (payload['message']) lines.push(payload['message']);
   if (payload['decision']) lines.push(`Decision: ${payload['decision']}`);
+  if (payload['invoiceNumber'])
+    lines.push(
+      `Tax invoice ${payload['invoiceNumber']}: ${payload['amount'] ?? ''} ${payload['currency'] ?? ''}`.trim(),
+    );
   if (payload['receiptNumber'])
     lines.push(
       `Receipt ${payload['receiptNumber']}: ${payload['amount'] ?? ''} ${payload['currency'] ?? ''}`.trim(),

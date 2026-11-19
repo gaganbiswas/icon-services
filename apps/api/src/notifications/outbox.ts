@@ -9,7 +9,8 @@ export type NotificationEvent =
   | 'ESTIMATE_READY'
   | 'ESTIMATE_DECISION_RECORDED'
   | 'PAYMENT_RECEIVED'
-  | 'DELIVERY_CONFIRMED';
+  | 'DELIVERY_CONFIRMED'
+  | 'INVOICE_ISSUED';
 
 export interface OutboxEntry {
   readonly organizationId: string;

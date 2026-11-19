@@ -7,10 +7,11 @@ Every route is authenticated unless public. Staff routes enforce all listed perm
 scope records to the organization and permitted branches (out-of-scope records → 404). Customer routes take
 identity from the customer token only. Public routes are rate-limited and protected by their own token/signature.
 
-Routes: 117 (public 15, customer 14, staff 88).
+Routes: 134 (public 15, customer 17, staff 102).
 
 | Method | Path                                         | Access   | Permissions                      |
 | ------ | -------------------------------------------- | -------- | -------------------------------- |
+| POST   | `/api/v1/allocations/:id/release`            | staff    | `payments.refund`                |
 | GET    | `/api/v1/asset-categories`                   | staff    | `assets.read`                    |
 | POST   | `/api/v1/assets`                             | staff    | `assets.write`                   |
 | GET    | `/api/v1/assets/:id`                         | staff    | `assets.read`                    |
@@ -26,6 +27,7 @@ Routes: 117 (public 15, customer 14, staff 88).
 | POST   | `/api/v1/auth/refresh`                       | public   | —                                |
 | GET    | `/api/v1/branches`                           | staff    | `branches.read`                  |
 | GET    | `/api/v1/branches/:id`                       | staff    | `branches.read`                  |
+| POST   | `/api/v1/credit-notes/:id/pdf`               | staff    | `invoices.read`                  |
 | GET    | `/api/v1/customer/asset-categories`          | customer | —                                |
 | GET    | `/api/v1/customer/assets`                    | customer | —                                |
 | POST   | `/api/v1/customer/auth/logout`               | public   | —                                |
@@ -34,8 +36,11 @@ Routes: 117 (public 15, customer 14, staff 88).
 | POST   | `/api/v1/customer/auth/refresh`              | public   | —                                |
 | GET    | `/api/v1/customer/branches`                  | customer | —                                |
 | PUT    | `/api/v1/customer/consents`                  | customer | —                                |
+| POST   | `/api/v1/customer/credit-notes/:id/pdf`      | customer | —                                |
 | POST   | `/api/v1/customer/estimates/:id/decision`    | customer | —                                |
 | POST   | `/api/v1/customer/files`                     | customer | —                                |
+| GET    | `/api/v1/customer/invoices`                  | customer | —                                |
+| POST   | `/api/v1/customer/invoices/:id/pdf`          | customer | —                                |
 | GET    | `/api/v1/customer/jobs`                      | customer | —                                |
 | POST   | `/api/v1/customer/jobs`                      | customer | —                                |
 | GET    | `/api/v1/customer/jobs/:id`                  | customer | —                                |
@@ -68,6 +73,15 @@ Routes: 117 (public 15, customer 14, staff 88).
 | GET    | `/api/v1/inventory/reconciliation`           | staff    | `inventory.adjust`               |
 | GET    | `/api/v1/inventory/stock`                    | staff    | `inventory.read`                 |
 | POST   | `/api/v1/inventory/transfers`                | staff    | `inventory.adjust`               |
+| GET    | `/api/v1/invoices`                           | staff    | `invoices.read`                  |
+| DELETE | `/api/v1/invoices/:id`                       | staff    | `invoices.write`                 |
+| GET    | `/api/v1/invoices/:id`                       | staff    | `invoices.read`                  |
+| PUT    | `/api/v1/invoices/:id`                       | staff    | `invoices.write`                 |
+| POST   | `/api/v1/invoices/:id/allocations`           | staff    | `payments.record`                |
+| POST   | `/api/v1/invoices/:id/credit-notes`          | staff    | `credit_notes.issue`             |
+| POST   | `/api/v1/invoices/:id/issue`                 | staff    | `invoices.issue`                 |
+| POST   | `/api/v1/invoices/:id/pdf`                   | staff    | `invoices.read`                  |
+| GET    | `/api/v1/invoicing/status`                   | staff    | `invoices.read`                  |
 | GET    | `/api/v1/jobs`                               | staff    | `jobs.read`                      |
 | POST   | `/api/v1/jobs`                               | staff    | `jobs.create`                    |
 | GET    | `/api/v1/jobs/:id`                           | staff    | `jobs.read`                      |
@@ -81,6 +95,8 @@ Routes: 117 (public 15, customer 14, staff 88).
 | POST   | `/api/v1/jobs/:id/deliveries/dispatch`       | staff    | `deliveries.write`               |
 | POST   | `/api/v1/jobs/:id/deliveries/handover`       | staff    | `deliveries.complete`            |
 | POST   | `/api/v1/jobs/:id/diagnoses`                 | staff    | `diagnosis.write`                |
+| GET    | `/api/v1/jobs/:id/invoices`                  | staff    | `invoices.read`                  |
+| POST   | `/api/v1/jobs/:id/invoices`                  | staff    | `invoices.write`                 |
 | GET    | `/api/v1/jobs/:id/parts`                     | staff    | `jobs.read`                      |
 | POST   | `/api/v1/jobs/:id/parts`                     | staff    | `worklogs.write`                 |
 | PUT    | `/api/v1/jobs/:id/parts/removed`             | staff    | `worklogs.write`                 |
@@ -109,6 +125,7 @@ Routes: 117 (public 15, customer 14, staff 88).
 | GET    | `/api/v1/reports/:report/export`             | staff    | `reports.export`, `reports.read` |
 | GET    | `/api/v1/reports/collections`                | staff    | `payments.read`, `reports.read`  |
 | GET    | `/api/v1/reports/dashboard`                  | staff    | `reports.read`                   |
+| GET    | `/api/v1/reports/gst-summary`                | staff    | `invoices.read`, `reports.read`  |
 | GET    | `/api/v1/reports/jobs`                       | staff    | `jobs.read`, `reports.read`      |
 | GET    | `/api/v1/reports/outstanding`                | staff    | `payments.read`, `reports.read`  |
 | GET    | `/api/v1/reports/parts`                      | staff    | `inventory.read`, `reports.read` |

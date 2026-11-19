@@ -715,6 +715,7 @@ model ServiceJob {
   estimates     Estimate[]
   parts         JobPart[]
   deliveries    Delivery[]
+  invoices      Invoice[]
 
   @@unique([organizationId, jobNumber])
   @@unique([organizationId, id])
@@ -1297,7 +1298,8 @@ model Payment {
   reversalReason String?       @map("reversal_reason") @db.VarChar(500)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  refunds PaymentRefund[]
+  refunds     PaymentRefund[]
+  allocations PaymentAllocation[]
 
   @@unique([organizationId, receiptNumber])
   @@index([organizationId, customerId])
@@ -1466,4 +1468,189 @@ model MfaChallenge {
 
   @@index([userId])
   @@map("mfa_challenges")
+}
+
+// ---------------------------------------------------------------------------
+// GST invoicing (Phase 7, ADR 0021/0022). Money NUMERIC(19,4); invoice values are
+// computed to paise. Issued invoices, credit notes and summaries are frozen by triggers.
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  CANCELLED
+
+  @@map("invoice_status")
+}
+
+enum SupplyType {
+  INTRA_STATE
+  INTER_STATE
+
+  @@map("supply_type")
+}
+
+model Invoice {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  organizationId    String        @map("organization_id") @db.Uuid
+  branchId          String        @map("branch_id") @db.Uuid
+  jobId             String        @map("job_id") @db.Uuid
+  customerId        String        @map("customer_id") @db.Uuid
+  sourceEstimateId  String?       @map("source_estimate_id") @db.Uuid
+  status            InvoiceStatus @default(DRAFT)
+  /// Assigned at issue: unique per organisation, ≤ 16 characters (GST).
+  invoiceNumber     String?       @map("invoice_number") @db.VarChar(16)
+  financialYear     String?       @map("financial_year") @db.VarChar(9)
+  invoiceDate       DateTime?     @map("invoice_date") @db.Date
+  currency          String        @db.Char(3)
+  supplyType        SupplyType    @map("supply_type")
+  placeOfSupplyCode String        @map("place_of_supply_code") @db.Char(2)
+  reverseCharge     Boolean       @default(false) @map("reverse_charge")
+  /// Immutable snapshots taken at issue (supplier) / kept current while draft (recipient).
+  supplier          Json?
+  recipient         Json
+  taxableTotal      Decimal       @default(0) @map("taxable_total") @db.Decimal(19, 4)
+  cgstTotal         Decimal       @default(0) @map("cgst_total") @db.Decimal(19, 4)
+  sgstTotal         Decimal       @default(0) @map("sgst_total") @db.Decimal(19, 4)
+  igstTotal         Decimal       @default(0) @map("igst_total") @db.Decimal(19, 4)
+  taxTotal          Decimal       @default(0) @map("tax_total") @db.Decimal(19, 4)
+  roundOff          Decimal       @default(0) @map("round_off") @db.Decimal(19, 4)
+  total             Decimal       @default(0) @db.Decimal(19, 4)
+  creditedTotal     Decimal       @default(0) @map("credited_total") @db.Decimal(19, 4)
+  allocatedTotal    Decimal       @default(0) @map("allocated_total") @db.Decimal(19, 4)
+  notes             String?       @db.VarChar(1000)
+  terms             String?       @db.VarChar(2000)
+  rowVersion        Int           @default(1) @map("row_version")
+  createdById       String        @map("created_by_id") @db.Uuid
+  issuedAt          DateTime?     @map("issued_at") @db.Timestamptz(3)
+  issuedById        String?       @map("issued_by_id") @db.Uuid
+  cancelledAt       DateTime?     @map("cancelled_at") @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  job          ServiceJob          @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  lines        InvoiceLine[]
+  taxSummaries InvoiceTaxSummary[]
+  creditNotes  CreditNote[]
+  allocations  PaymentAllocation[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([jobId])
+  @@index([organizationId, branchId, invoiceDate])
+  @@index([organizationId, customerId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id                   String           @id @default(uuid(7)) @db.Uuid
+  invoiceId            String           @map("invoice_id") @db.Uuid
+  position             Int
+  lineType             EstimateLineType @map("line_type")
+  description          String           @db.VarChar(500)
+  hsnSac               String           @map("hsn_sac") @db.VarChar(8)
+  quantity             Decimal          @db.Decimal(19, 4)
+  unit                 String           @db.VarChar(20)
+  unitPrice            Decimal          @map("unit_price") @db.Decimal(19, 4)
+  discount             Decimal          @db.Decimal(19, 4)
+  taxableValue         Decimal          @map("taxable_value") @db.Decimal(19, 4)
+  taxCategory          String           @map("tax_category") @db.VarChar(30)
+  gstRate              Decimal          @map("gst_rate") @db.Decimal(6, 3)
+  cgstRate             Decimal          @map("cgst_rate") @db.Decimal(6, 3)
+  sgstRate             Decimal          @map("sgst_rate") @db.Decimal(6, 3)
+  igstRate             Decimal          @map("igst_rate") @db.Decimal(6, 3)
+  cgstAmount           Decimal          @map("cgst_amount") @db.Decimal(19, 4)
+  sgstAmount           Decimal          @map("sgst_amount") @db.Decimal(19, 4)
+  igstAmount           Decimal          @map("igst_amount") @db.Decimal(19, 4)
+  lineTotal            Decimal          @map("line_total") @db.Decimal(19, 4)
+  creditedQuantity     Decimal          @default(0) @map("credited_quantity") @db.Decimal(19, 4)
+  sourceEstimateLineId String?          @map("source_estimate_line_id") @db.Uuid
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, position])
+  @@map("invoice_lines")
+}
+
+/// HSN/SAC × rate summary written once at issue.
+model InvoiceTaxSummary {
+  id           String  @id @default(uuid(7)) @db.Uuid
+  invoiceId    String  @map("invoice_id") @db.Uuid
+  hsnSac       String  @map("hsn_sac") @db.VarChar(8)
+  gstRate      Decimal @map("gst_rate") @db.Decimal(6, 3)
+  taxableValue Decimal @map("taxable_value") @db.Decimal(19, 4)
+  cgstAmount   Decimal @map("cgst_amount") @db.Decimal(19, 4)
+  sgstAmount   Decimal @map("sgst_amount") @db.Decimal(19, 4)
+  igstAmount   Decimal @map("igst_amount") @db.Decimal(19, 4)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, hsnSac, gstRate])
+  @@map("invoice_tax_summaries")
+}
+
+/// Corrections to issued invoices (never edits). Append-only.
+model CreditNote {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  branchId         String   @map("branch_id") @db.Uuid
+  invoiceId        String   @map("invoice_id") @db.Uuid
+  creditNoteNumber String   @map("credit_note_number") @db.VarChar(16)
+  financialYear    String   @map("financial_year") @db.VarChar(9)
+  noteDate         DateTime @map("note_date") @db.Date
+  reason           String   @db.VarChar(500)
+  isFull           Boolean  @map("is_full")
+  taxableTotal     Decimal  @map("taxable_total") @db.Decimal(19, 4)
+  cgstTotal        Decimal  @map("cgst_total") @db.Decimal(19, 4)
+  sgstTotal        Decimal  @map("sgst_total") @db.Decimal(19, 4)
+  igstTotal        Decimal  @map("igst_total") @db.Decimal(19, 4)
+  roundOff         Decimal  @map("round_off") @db.Decimal(19, 4)
+  total            Decimal  @db.Decimal(19, 4)
+  snapshot         Json
+  createdById      String   @map("created_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  invoice Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  lines   CreditNoteLine[]
+
+  @@unique([organizationId, creditNoteNumber])
+  @@index([invoiceId])
+  @@index([organizationId, noteDate])
+  @@map("credit_notes")
+}
+
+model CreditNoteLine {
+  id            String  @id @default(uuid(7)) @db.Uuid
+  creditNoteId  String  @map("credit_note_id") @db.Uuid
+  invoiceLineId String  @map("invoice_line_id") @db.Uuid
+  quantity      Decimal @db.Decimal(19, 4)
+  taxableValue  Decimal @map("taxable_value") @db.Decimal(19, 4)
+  cgstAmount    Decimal @map("cgst_amount") @db.Decimal(19, 4)
+  sgstAmount    Decimal @map("sgst_amount") @db.Decimal(19, 4)
+  igstAmount    Decimal @map("igst_amount") @db.Decimal(19, 4)
+  lineTotal     Decimal @map("line_total") @db.Decimal(19, 4)
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Restrict)
+
+  @@index([creditNoteId])
+  @@map("credit_note_lines")
+}
+
+/// Payment ↔ invoice allocation. Released (never deleted) when an allocation must be undone.
+model PaymentAllocation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  paymentId      String    @map("payment_id") @db.Uuid
+  invoiceId      String    @map("invoice_id") @db.Uuid
+  amount         Decimal   @db.Decimal(19, 4)
+  createdById    String    @map("created_by_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  releasedAt     DateTime? @map("released_at") @db.Timestamptz(3)
+  releasedById   String?   @map("released_by_id") @db.Uuid
+  releaseReason  String?   @map("release_reason") @db.VarChar(500)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
 }

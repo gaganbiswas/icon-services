@@ -6,6 +6,7 @@ import {
   MAX_EXPORT_ROWS,
   type PermissionCode,
   PeriodSchema,
+  DateRangeSchema,
 } from '@icon/contracts';
 import type { PrismaClient } from '@icon/database';
 import { z } from 'zod';
@@ -18,7 +19,12 @@ import { PdfRenderer } from '../documents/pdf-renderer.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
 import { type ReportTable, toCsv, toHtml, toXlsx } from './report-table.js';
+import { InvoicesService } from '../invoices/invoices.service.js';
 import { ReportsService } from './reports.service.js';
+
+/** Exclusive upper bound for an inclusive calendar date. */
+const nextDay = (date: string) =>
+  new Date(new Date(`${date}T00:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
 
 /** Extra permission each export needs on top of reports.read + reports.export. */
 export const EXPORT_PERMISSIONS: Record<ExportableReport, PermissionCode> = {
@@ -28,6 +34,8 @@ export const EXPORT_PERMISSIONS: Record<ExportableReport, PermissionCode> = {
   outstanding: 'payments.read',
   collections: 'payments.read',
   deliveries: 'deliveries.read',
+  invoices: 'invoices.read',
+  'gst-summary': 'invoices.read',
 };
 
 const BranchOnly = z.object({ branchId: z.uuid().optional() });
@@ -69,6 +77,7 @@ export class ReportExportsService {
     private readonly payments: PaymentsService,
     private readonly pdf: PdfRenderer,
     private readonly audit: AuditService,
+    private readonly invoices: InvoicesService,
   ) {}
 
   async export(
@@ -255,7 +264,7 @@ export class ReportExportsService {
           title: 'Outstanding balances and aging',
           filters: `${q.branchId ? 'One branch' : 'All permitted branches'} · currency ${data.currency ?? 'not configured'}`,
           notes: [
-            'Interim basis: approved estimate minus net payments on finished jobs, until invoicing is enabled. Age counts from repair completion.',
+            'Issued invoices (net of credit notes) minus net payments; finished jobs not yet invoiced use the approved estimate. Age counts from the invoice date (or repair completion).',
             `Total due: ${data.total}`,
           ],
           columns: [
@@ -316,6 +325,59 @@ export class ReportExportsService {
               refunded: data.refunded,
             },
           ],
+        };
+      }
+      case 'invoices': {
+        const q = parse(DateRangeSchema, query);
+        const page = await this.invoices.register(principal, {
+          from: q.from,
+          to: nextDay(q.to),
+          branchId: q.branchId,
+          page: 1,
+          pageSize: MAX_EXPORT_ROWS + 1,
+        });
+        return {
+          title: 'Invoice register',
+          filters: `${q.from} to ${q.to}${q.branchId ? ' · one branch' : ' · all permitted branches'}`,
+          columns: [
+            { key: 'invoiceNumber', label: 'Invoice', type: 'text' },
+            { key: 'invoiceDate', label: 'Date', type: 'date' },
+            { key: 'jobNumber', label: 'Job', type: 'text' },
+            { key: 'customerName', label: 'Customer', type: 'text' },
+            { key: 'recipientGstin', label: 'Customer GSTIN', type: 'text' },
+            { key: 'taxableTotal', label: 'Taxable value', type: 'money' },
+            { key: 'taxTotal', label: 'GST', type: 'money' },
+            { key: 'total', label: 'Total', type: 'money' },
+            { key: 'creditedTotal', label: 'Credited', type: 'money' },
+            { key: 'balance', label: 'Balance', type: 'money' },
+            { key: 'status', label: 'Status', type: 'text' },
+          ],
+          rows: page.items.map((r) => ({
+            ...r,
+            status: humanize(r.status === 'ISSUED' ? r.paymentState : r.status),
+          })),
+        };
+      }
+      case 'gst-summary': {
+        const q = parse(DateRangeSchema, query);
+        const s = await this.reports.gstSummary(principal, q);
+        return {
+          title: 'GST summary',
+          filters: `${q.from} to ${q.to} · currency ${s.currency || 'not configured'}`,
+          notes: [
+            'Invoices by invoice date minus credit notes by note date. A working summary for return preparation; review with the accountant before filing.',
+            `Net: taxable ${s.net.taxable}, CGST ${s.net.cgst}, SGST ${s.net.sgst}, IGST ${s.net.igst}, total ${s.net.total}`,
+          ],
+          columns: [
+            { key: 'hsnSac', label: 'HSN/SAC', type: 'text' },
+            { key: 'gstRate', label: 'GST rate %', type: 'quantity' },
+            { key: 'quantity', label: 'Quantity', type: 'quantity' },
+            { key: 'taxable', label: 'Taxable value', type: 'money' },
+            { key: 'cgst', label: 'CGST', type: 'money' },
+            { key: 'sgst', label: 'SGST', type: 'money' },
+            { key: 'igst', label: 'IGST', type: 'money' },
+          ],
+          rows: s.byHsn,
         };
       }
       case 'deliveries': {

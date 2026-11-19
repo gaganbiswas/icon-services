@@ -112,7 +112,7 @@ export class DeliveryService {
    * net payments for the job. Phase 7 replaces this with the invoice balance.
    */
   async balance(db: Tx | PrismaClient, organizationId: string, jobId: string): Promise<Balance> {
-    const [current, payments, { currency }] = await Promise.all([
+    const [current, payments, { currency }, invoices] = await Promise.all([
       db.estimate.findFirst({
         where: { jobId, status: { notIn: ['DRAFT', 'WITHDRAWN'] } },
         orderBy: { version: 'desc' },
@@ -123,8 +123,18 @@ export class DeliveryService {
         select: { amount: true, refundedTotal: true },
       }),
       this.settings.get(organizationId, 'money', db),
+      db.invoice.findMany({
+        where: { jobId, organizationId, status: { in: ['ISSUED', 'CANCELLED'] } },
+        select: { total: true, creditedTotal: true },
+      }),
     ]);
-    const billed = current?.status === 'APPROVED' ? current.customerPayable : new D(0);
+    // Issued invoices (net of credit notes) are the bill once they exist (ADR 0022); before that the approved estimate.
+    const invoiced = invoices.length > 0;
+    const billed = invoiced
+      ? invoices.reduce((acc, i) => acc.plus(i.total).minus(i.creditedTotal), new D(0))
+      : current?.status === 'APPROVED'
+        ? current.customerPayable
+        : new D(0);
     const paid = payments.reduce((acc, p) => acc.plus(p.amount).minus(p.refundedTotal), new D(0));
     const due = Prisma.Decimal.max(billed.minus(paid), new D(0));
     return {
@@ -132,7 +142,7 @@ export class DeliveryService {
       billed: q4(billed),
       paid: q4(paid),
       due: q4(due),
-      basis: current?.status === 'APPROVED' ? 'APPROVED_ESTIMATE' : 'NONE',
+      basis: invoiced ? 'INVOICE' : current?.status === 'APPROVED' ? 'APPROVED_ESTIMATE' : 'NONE',
     };
   }
 

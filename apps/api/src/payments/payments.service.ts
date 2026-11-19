@@ -17,6 +17,7 @@ import type { Principal } from '../access/principal.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AppException } from '../common/app-exception.js';
 import { runIdempotent } from '../idempotency/idempotency.service.js';
+import { autoAllocate } from '../invoices/allocation.js';
 import { enqueueNotification } from '../notifications/outbox.js';
 import { NumberingService } from '../numbering/numbering.service.js';
 import { PRISMA } from '../prisma/prisma.service.js';
@@ -279,8 +280,25 @@ export class PaymentsService {
               payload: { jobNumber: job.jobNumber, receiptNumber, amount: input.amount, currency },
               dedupeKey: created.id,
             });
+            // Money received after invoicing settles the job's open invoices, oldest first (ADR 0022).
+            const open = await tx.invoice.findMany({
+              where: { jobId: job.id, status: 'ISSUED' },
+              orderBy: { issuedAt: 'asc' },
+              select: { id: true },
+            });
+            for (const invoice of open) {
+              await autoAllocate(tx, {
+                organizationId: principal.organizationId,
+                invoiceId: invoice.id,
+                actorUserId: principal.userId,
+              });
+            }
           }
-          const [dto] = await this.toDto([created], tx);
+          const fresh = await tx.payment.findUniqueOrThrow({
+            where: { id: created.id },
+            include: PAYMENT_INCLUDE,
+          });
+          const [dto] = await this.toDto([fresh], tx);
           return { status: 201, body: dto as Payment, resourceId: created.id };
         },
       ),

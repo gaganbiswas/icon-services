@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type NumberFormat, formatNumber } from '@icon/contracts';
+import { type NumberFormat, financialYear, formatNumber } from '@icon/contracts';
 import type { Prisma } from '@icon/database';
 
 /** Calendar year of `at` in an IANA time zone (falls back to UTC). */
@@ -21,6 +21,8 @@ export interface NextNumberInput {
   readonly format: NumberFormat;
   readonly timeZone?: string | null | undefined;
   readonly at?: Date;
+  /** Month the financial year starts (1–12); used by FINANCIAL_YEAR resets and {FY}/{FYS}. */
+  readonly financialYearStartMonth?: number;
 }
 
 /**
@@ -33,7 +35,13 @@ export class NumberingService {
   async next(tx: Prisma.TransactionClient, input: NextNumberInput): Promise<string> {
     const at = input.at ?? new Date();
     const year = yearIn(at, input.timeZone);
-    const periodKey = input.format.reset === 'YEARLY' ? String(year) : 'ALL';
+    const fy = financialYear(at, input.financialYearStartMonth ?? 4, input.timeZone ?? 'UTC');
+    const periodKey =
+      input.format.reset === 'YEARLY'
+        ? String(year)
+        : input.format.reset === 'FINANCIAL_YEAR'
+          ? `FY${fy.label}`
+          : 'ALL';
     const branchScope = input.branch?.id ?? '-';
     const rows = await tx.$queryRaw<{ current_value: bigint }[]>`
       INSERT INTO "number_sequences" ("id", "organization_id", "branch_scope", "document_type", "period_key", "current_value", "updated_at")
@@ -45,6 +53,11 @@ export class NumberingService {
     if (sequence === undefined) {
       throw new Error('Number sequence did not return a value');
     }
-    return formatNumber(input.format.template, { sequence, year, branchCode: input.branch?.code });
+    return formatNumber(input.format.template, {
+      sequence,
+      year,
+      fy: { label: fy.label, short: fy.short },
+      ...(input.branch?.code ? { branchCode: input.branch.code } : {}),
+    });
   }
 }
