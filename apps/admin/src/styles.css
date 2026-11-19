@@ -27,9 +27,23 @@ body {
 }
 
 main {
-  max-width: 64rem;
+  max-width: 72rem;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 1.3rem;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.1rem;
 }
 
 .muted {
@@ -69,10 +83,26 @@ form {
 .field {
   display: grid;
   gap: 0.25rem;
+  /* Anchors visually hidden labels so they never widen the page. */
+  position: relative;
 }
 
 label {
   font-weight: 600;
+}
+
+input,
+select {
+  min-height: 2.75rem;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  min-height: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  flex: none;
 }
 
 input {
@@ -132,9 +162,14 @@ button:disabled {
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem 1rem;
   flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.page-header h1 {
+  margin: 0;
 }
 
 .summary {
@@ -195,6 +230,48 @@ button:disabled {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Buttons keep their natural width inside forms (sign-in style forms opt in to full width). */
+form > button,
+form > .actions {
+  justify-self: start;
+}
+
+main.narrow form > button {
+  justify-self: stretch;
+}
+
+/* Rows of form fields / filters: align fields and buttons on their bottom edge.
+   Content grids (dashboard panels) keep top alignment. */
+form.grid-2,
+form .grid-2,
+.grid-2.filters {
+  align-items: end;
+}
+
+.grid-2 > div:has(> button) {
+  align-self: end;
+}
+
+/* Spacing between a toolbar (export, paging) and the table next to it. */
+.table-wrap + .actions,
+.actions + .table-wrap,
+[role='group'].actions {
+  margin-block: 0.75rem;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 a.button {
@@ -224,6 +301,15 @@ textarea {
 /* ---- Tables ---- */
 .table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Grid/flex children may shrink below their content, so wide tables scroll inside their wrapper. */
+form > *,
+.grid-2 > *,
+.card > * {
+  min-width: 0;
 }
 
 table.data {
@@ -234,9 +320,65 @@ table.data {
 table.data th,
 table.data td {
   text-align: left;
-  padding: 0.5rem;
+  padding: 0.6rem 0.5rem;
   border-bottom: 1px solid var(--color-border);
   vertical-align: top;
+}
+
+table.data th {
+  white-space: nowrap;
+}
+
+/* Identifiers (job, receipt, challan numbers) never break across lines. */
+table.data td:first-child,
+table.data td:first-child a {
+  white-space: nowrap;
+}
+
+table.data caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0 0.5rem 0.5rem;
+}
+
+/* Compact buttons inside tables so row actions stay on one line. */
+table.data button,
+table.data a.button {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+table.data td .actions {
+  flex-wrap: nowrap;
+}
+
+/* An "actions" cell must stay a table cell (not flex), or its border breaks out of the row. */
+table.data td.actions {
+  display: table-cell;
+  white-space: nowrap;
+}
+
+table.data td.actions > * + * {
+  margin-left: 0.4rem;
+}
+
+/* A filter bar: fields side by side, bottoms aligned, separated from the table below. */
+.filters {
+  margin-bottom: 1rem;
+}
+
+.filters form {
+  margin: 0;
+}
+
+.filters > .checkbox {
+  min-height: 2.75rem;
+}
+
+table.data input,
+table.data select {
+  width: 100%;
+  min-width: 6rem;
 }
 
 .badge {
@@ -255,8 +397,27 @@ table.data td {
 .card {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   margin-block: 1rem;
+}
+
+.card > :first-child,
+.card > section > :first-child {
+  margin-top: 0;
+}
+
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.card .card {
+  padding: 0.75rem 1rem;
+}
+
+details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 0.25rem;
 }
 
 .grid-2 {
@@ -313,7 +474,7 @@ fieldset {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-block: 1rem;
+  margin-block: 0 1rem;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 0.5rem;
 }
@@ -328,13 +489,18 @@ fieldset {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 0.75rem;
+  gap: 1rem;
+}
+
+.job-cards > li,
+.job-cards > li.card {
+  margin: 0;
 }
 
 /* Dashboard tiles (Phase 11) */
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
   gap: 0.75rem;
   margin: 0 0 1.5rem;
 }
@@ -351,6 +517,7 @@ fieldset {
   font-size: 0.875rem;
 }
 .tile-value {
+  overflow-wrap: anywhere;
   font-size: 1.5rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -371,4 +538,81 @@ th.num {
 .secret {
   word-break: break-all;
   font-size: 1.05rem;
+}
+
+/* ---- Small screens (phones) ---- */
+.topbar nav ul {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+
+@media (max-width: 48rem) {
+  .topbar {
+    gap: 0.5rem 1rem;
+  }
+
+  /* Brand and account on the first row, menu on its own full-width row. */
+  .topbar nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .topbar nav ul {
+    gap: 0.25rem 1rem;
+  }
+
+  .topbar nav a {
+    display: inline-block;
+    padding-block: 0.25rem;
+  }
+
+  main {
+    padding: 1rem 1rem 2.5rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  /* Tabs scroll sideways instead of stacking into several rows. */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs [role='tab'] {
+    flex: none;
+  }
+
+  /* Label/value lists stack so values get the full width. */
+  .summary {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .summary dd {
+    margin-bottom: 0.5rem;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile-value {
+    font-size: 1.25rem;
+  }
+
+  .card {
+    padding: 0.75rem 1rem;
+  }
+
+  /* Text columns keep a readable width; the table scrolls sideways inside its wrapper. */
+  .table-wrap table.data td {
+    min-width: 7rem;
+  }
+
+  .table-wrap table.data td.num {
+    min-width: 0;
+  }
 }

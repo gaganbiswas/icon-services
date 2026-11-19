@@ -4,13 +4,17 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   readonly id: string;
   readonly label: string;
   readonly error?: string | undefined;
+  /** Hide the label visually (still read by screen readers), e.g. inside a table with headers. */
+  readonly hideLabel?: boolean;
 }
 
-export function FormField({ id, label, error, ...input }: FormFieldProps) {
+export function FormField({ id, label, error, hideLabel = false, ...input }: FormFieldProps) {
   const errorId = `${id}-error`;
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={hideLabel ? 'visually-hidden' : undefined}>
+        {label}
+      </label>
       <input
         id={id}
         name={id}

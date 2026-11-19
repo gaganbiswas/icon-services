@@ -69,7 +69,7 @@ export function InventoryPage() {
     >
       <ResourceView resource={branches}>
         {(list) => (
-          <div className="grid-2">
+          <div className="grid-2 filters">
             <SelectField
               id="branch"
               label="Branch"

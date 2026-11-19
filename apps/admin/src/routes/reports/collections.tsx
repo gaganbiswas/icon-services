@@ -101,45 +101,59 @@ export function CollectionsPage() {
                 Reversed payments are excluded. Refunds count on the day they were made.
               </p>
               <h2>By method</h2>
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th scope="col">Method</th>
-                    <th scope="col">Received</th>
-                    <th scope="col">Refunded</th>
-                    <th scope="col">Payments</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.byMethod.map((row) => (
-                    <tr key={row.method}>
-                      <td>{PAYMENT_METHOD_LABELS[row.method]}</td>
-                      <td>{m(row.received)}</td>
-                      <td>{m(row.refunded)}</td>
-                      <td>{row.count}</td>
+              <div className="table-wrap">
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th scope="col">Method</th>
+                      <th scope="col" className="num">
+                        Received
+                      </th>
+                      <th scope="col" className="num">
+                        Refunded
+                      </th>
+                      <th scope="col" className="num">
+                        Payments
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {r.byMethod.map((row) => (
+                      <tr key={row.method}>
+                        <td>{PAYMENT_METHOD_LABELS[row.method]}</td>
+                        <td className="num">{m(row.received)}</td>
+                        <td className="num">{m(row.refunded)}</td>
+                        <td className="num">{row.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <h2>By cashier</h2>
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th scope="col">Received by</th>
-                    <th scope="col">Received</th>
-                    <th scope="col">Payments</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.byCashier.map((row) => (
-                    <tr key={row.user.id}>
-                      <td>{row.user.fullName}</td>
-                      <td>{m(row.received)}</td>
-                      <td>{row.count}</td>
+              <div className="table-wrap">
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th scope="col">Received by</th>
+                      <th scope="col" className="num">
+                        Received
+                      </th>
+                      <th scope="col" className="num">
+                        Payments
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {r.byCashier.map((row) => (
+                      <tr key={row.user.id}>
+                        <td>{row.user.fullName}</td>
+                        <td className="num">{m(row.received)}</td>
+                        <td className="num">{row.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           );
         }}

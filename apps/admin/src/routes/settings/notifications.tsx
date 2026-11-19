@@ -108,6 +108,7 @@ export function NotificationSettingsForm() {
                         <th scope="row">{label(e)}</th>
                         <td>
                           <FormField
+                            hideLabel
                             id={`${e}.name`}
                             label={`WhatsApp template for ${label(e)}`}
                             defaultValue={current?.whatsapp?.name ?? ''}
@@ -117,6 +118,7 @@ export function NotificationSettingsForm() {
                         </td>
                         <td>
                           <FormField
+                            hideLabel
                             id={`${e}.language`}
                             label="Language"
                             defaultValue={current?.whatsapp?.language ?? 'en'}
@@ -129,6 +131,7 @@ export function NotificationSettingsForm() {
                         </td>
                         <td>
                           <FormField
+                            hideLabel
                             id={`${e}.subject`}
                             label={`Email subject for ${label(e)}`}
                             defaultValue={current?.emailSubject ?? ''}
