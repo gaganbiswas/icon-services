@@ -36,15 +36,17 @@
     integration and email.
 -   Delivery, payment collection, payment modes, and printable delivery
     challan.
--   Billing modes: **GST and Non-GST**.
+-   Billing mode: **GST invoices only** (regular scheme, GSTIN
+    19AHDPB5074F1ZK, West Bengal). No non-GST / bill-of-supply mode
+    (owner decision, ADR 0021).
 -   Service workflow must preserve a full audit trail.
 
 ### Important assumptions that must remain configurable
 
-1.  The initial tax examples and currency in the supplied brief suggest
-    India/INR, but the legal entity's country, state, GST registration,
-    GSTIN, place-of-supply rules, invoice series, tax rates, HSN/SAC
-    mapping, and e-invoicing applicability have **not** been confirmed.
+1.  Confirmed (ADR 0021): GST-registered under the regular scheme in
+    West Bengal, India (GSTIN 19AHDPB5074F1ZK). Still **not** confirmed:
+    currency, place-of-supply rules, invoice series, tax rates, HSN/SAC
+    mapping, rounding, and e-invoicing applicability.
     Build a configurable tax engine. Do not hard-code tax rates or claim
     legal compliance. Obtain approval from the business's accountant/tax
     professional before production billing.
@@ -328,11 +330,11 @@ change historical invoice prices when catalogue prices change.
 
 ### 4.7 Invoice and tax
 
-Support two selectable invoice modes: - `GST`: tax calculation according
-to the configured and legally approved jurisdiction settings. -
-`NON_GST`: no GST charged; show the legally approved wording/identifier
-for the business's situation. Do not assume that a non-GST invoice can
-use any particular tax statement.
+Invoices are **GST invoices only** (owner decision, ADR 0021): tax
+calculation according to the configured and legally approved
+jurisdiction settings. Do not build a non-GST / bill-of-supply mode. Keep
+a tax-mode field in the invoice model so another mode could be added
+later without schema changes, but implement and expose only `GST`.
 
 Invoice requirements: - Unique invoice number by branch/series/financial
 year, generated safely under concurrent requests. - Link to job,
@@ -420,8 +422,8 @@ request was accepted.
 
 Generate PDF documents server-side with stable templates: 1. Customer
 job receipt / job sheet. 2. Estimate / quotation. 3. Final GST invoice.
-4. Final non-GST invoice. 5. Payment receipt. 6. Delivery challan. 7.
-Optional warranty/service report.
+4. Payment receipt. 5. Delivery challan. 6. Optional warranty/service
+report.
 
 Requirements: - A4 and configurable thermal receipt layouts where
 appropriate. - Business logo, address, contact, document number, date,
@@ -797,8 +799,8 @@ proof of ownership.
     messages.
 5.  Technician notes remain private.
 6.  Estimate versioning and explicit customer approval/rejection work.
-7.  Authorized accounts staff can issue GST or non-GST invoices using
-    approved configuration; issued invoice values remain immutable.
+7.  Authorized accounts staff can issue GST invoices using approved
+    configuration; issued invoice values remain immutable.
 8.  Multiple partial payments can be recorded and allocated; balance is
     correct.
 9.  Delivery challan prints and delivery requires a handover record.
@@ -900,15 +902,15 @@ customer Android app; receipt prints.
 
 -   First obtain written confirmation of jurisdiction and tax
     configuration from owner/accountant.
--   Implement configurable GST/non-GST modes, effective-dated tax rules,
+-   Implement GST invoicing (GST only, ADR 0021), effective-dated tax rules,
     decimal-safe calculation, invoice numbering, immutable snapshots,
     PDF templates, credit notes/void workflow.
 -   Add tax calculation test vectors approved by the accountant.
 -   Do not invent tax rates, legal phrases, HSN/SAC codes, or invoice
     fields.
 
-**Exit:** accountant-approved test cases pass; GST and non-GST invoice
-PDFs verified.
+**Exit:** accountant-approved test cases pass; GST invoice PDFs
+verified.
 
 ### Phase 8 --- Payments and receipts
 
