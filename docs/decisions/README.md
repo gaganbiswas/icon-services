@@ -26,5 +26,6 @@ Architecture/Product Decision Records (ADRs). Each decision has a status:
 | 0015 | Inventory, stock ledger and job parts | Approved (with defaults) | 2026-11-18 |
 | 0016 | Payments, refunds, reversals, receipts (before invoicing) | Approved (with defaults) | 2026-11-18 |
 | 0017 | Delivery, hand-over and delivery challan | Approved (with defaults) | 2026-11-18 |
+| 0018 | Notification providers (Meta WhatsApp, SMTP, WhatsApp OTP) | Approved; queue item proposed | 2026-11-18 |
 
 New decisions: copy `template.md`, use the next number, add a row above.

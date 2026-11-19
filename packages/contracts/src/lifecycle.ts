@@ -294,6 +294,7 @@ export const NotificationSchema = z.object({
         'FAILED',
         'SKIPPED_NO_CONSENT',
         'SKIPPED_NO_ADDRESS',
+        'SKIPPED_NOT_CONFIGURED',
         'DELIVERED',
         'READ',
       ]),

@@ -939,6 +939,8 @@ enum DeliveryStatus {
   FAILED
   SKIPPED_NO_CONSENT
   SKIPPED_NO_ADDRESS
+  /// Channel disabled or no approved template for the event (ADR 0018).
+  SKIPPED_NOT_CONFIGURED
   /// Set only from provider delivery callbacks (Phase 10).
   DELIVERED
   READ

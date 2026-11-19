@@ -53,6 +53,48 @@ export const EstimateSettingsSchema = z.object({
   terms: z.string().min(1).max(4000),
 });
 
+/** Events customers can be notified about (ADR 0013/0018). */
+export const NOTIFICATION_EVENTS = [
+  'JOB_RECEIVED',
+  'JOB_STATUS_CHANGED',
+  'JOB_UPDATE_POSTED',
+  'REPAIR_COMPLETED',
+  'READY_FOR_DELIVERY',
+  'ESTIMATE_READY',
+  'ESTIMATE_DECISION_RECORDED',
+  'PAYMENT_RECEIVED',
+  'DELIVERY_CONFIRMED',
+] as const;
+export type NotificationEventName = (typeof NOTIFICATION_EVENTS)[number];
+
+const TemplateRefSchema = z.object({
+  /** Approved Meta template name. */
+  name: z
+    .string()
+    .regex(
+      /^[a-z0-9_]{1,512}$/,
+      'Use the exact approved template name (lower-case, digits, underscores)',
+    ),
+  /** Template language code as approved, e.g. en, en_US, hi. */
+  language: z.string().regex(/^[a-z]{2,3}(_[A-Z]{2})?$/),
+});
+
+const TimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)');
+
+export const NotificationSettingsSchema = z.object({
+  /** Per event: approved WhatsApp template (null = not configured) and email subject (null = no email). */
+  templates: z.record(
+    z.enum(NOTIFICATION_EVENTS),
+    z.object({
+      whatsapp: TemplateRefSchema.nullable(),
+      emailSubject: z.string().min(1).max(200).nullable(),
+    }),
+  ),
+  /** Optional quiet hours in the organization time zone; null = off. */
+  quietHours: z.object({ start: TimeSchema, end: TimeSchema }).nullable(),
+});
+export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
+
 export const DeliverySettingsSchema = z.object({
   /** Printed on delivery challans (PLACEHOLDER until supplied, H59). */
   challanTerms: z.string().min(1).max(2000),
@@ -119,6 +161,27 @@ export const SETTINGS = {
   'numbering.challanNumber': {
     schema: NumberFormatSchema,
     default: { template: 'DC-{BRANCH}-{YYYY}-{SEQ:6}', reset: 'YEARLY' } satisfies NumberFormat,
+  },
+  notifications: {
+    schema: NotificationSettingsSchema,
+    default: {
+      // WhatsApp templates must be approved by Meta before use (PLACEHOLDER: none configured).
+      templates: {
+        JOB_RECEIVED: { whatsapp: null, emailSubject: 'We have received your service request' },
+        JOB_STATUS_CHANGED: { whatsapp: null, emailSubject: 'Update on your service request' },
+        JOB_UPDATE_POSTED: { whatsapp: null, emailSubject: 'Update on your service request' },
+        REPAIR_COMPLETED: { whatsapp: null, emailSubject: 'Your repair is complete' },
+        READY_FOR_DELIVERY: { whatsapp: null, emailSubject: 'Your device is ready' },
+        ESTIMATE_READY: { whatsapp: null, emailSubject: 'Your repair estimate is ready' },
+        ESTIMATE_DECISION_RECORDED: {
+          whatsapp: null,
+          emailSubject: 'We have recorded your estimate decision',
+        },
+        PAYMENT_RECEIVED: { whatsapp: null, emailSubject: 'Payment received' },
+        DELIVERY_CONFIRMED: { whatsapp: null, emailSubject: 'Your device has been handed over' },
+      } as NotificationSettings['templates'],
+      quietHours: null as NotificationSettings['quietHours'],
+    },
   },
   delivery: {
     schema: DeliverySettingsSchema,

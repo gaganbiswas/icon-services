@@ -1,6 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import type { CustomerTokenResponse } from '@icon/contracts';
 import type { Prisma, PrismaClient } from '@icon/database';
 
@@ -36,6 +36,8 @@ function invalidToken(): AppException {
 
 @Injectable()
 export class CustomerAuthService {
+  private readonly logger = new Logger(CustomerAuthService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(APP_ENV) private readonly env: Env,
@@ -105,7 +107,19 @@ export class CustomerAuthService {
         },
       });
     });
-    await this.otp.send(phone.e164, code);
+    try {
+      await this.otp.send(phone.e164, code);
+    } catch (error) {
+      // Same answer whether or not the customer exists; only the provider failure is reported.
+      this.logger.warn(
+        `Sign-in code delivery failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      throw new AppException(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'OTP_DELIVERY_FAILED',
+        'The sign-in code could not be sent. Please try again shortly.',
+      );
+    }
     return response;
   }
 

@@ -96,12 +96,12 @@ confirmation from the business's accountant / tax professional.
 ## F. Providers **(do not choose on your behalf)**
 
 45. OTP/SMS provider (e.g. MSG91, Twilio, Firebase Auth, other) and whether
-    DLT registration (India) is done. _answer_
+    DLT registration (India) is done. **WhatsApp authentication template (ADR 0018).**
 46. WhatsApp: do you have a WhatsApp Business Platform account / Meta
     Business verification? Preferred provider (Meta Cloud API direct, or a BSP
-    such as Gupshup, Twilio, Interakt, other)? Business phone number to use. _answer_
+    such as Gupshup, Twilio, Interakt, other)? Business phone number to use. **Meta Cloud API direct (ADR 0018).** Business verification, phone number and template approval still needed. _answer_
 47. Transactional email provider (Amazon SES, Postmark, SendGrid, Resend,
-    other) and sender domain. Do you control the domain's DNS? _answer_
+    other) and sender domain. Do you control the domain's DNS? **SMTP (provider by configuration, ADR 0018).** Sender domain + DNS still needed. _answer_
 48. Online payment gateway: confirm **out of scope** for release one? _answer_
 
 ## G. Hosting, security, data

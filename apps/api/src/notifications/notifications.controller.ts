@@ -112,7 +112,9 @@ export class NotificationsController {
       }
       await tx.notificationOutbox.update({
         where: { id },
-        data: { status: 'PENDING', attempts: 0, nextAttemptAt: new Date(), lastError: null },
+        // Attempt numbers keep counting (deliveries are unique per attempt); a
+        // manual retry after the limit gets one more attempt.
+        data: { status: 'PENDING', nextAttemptAt: new Date(), lastError: null },
       });
       await this.audit.record(tx, {
         organizationId: principal.organizationId,

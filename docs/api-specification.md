@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 9 (2026-11-18).
+Updated: Phase 10 (2026-11-19).
 
 ## Conventions
 
@@ -159,6 +159,17 @@ References that look like card numbers are rejected.
 | POST | `/deliveries/:id/failed-attempt` | `deliveries.write` | `{reason}` → READY_FOR_DELIVERY |
 | POST | `/deliveries/:id/challan?layout=` | `deliveries.read` | Challan PDF; new version when the delivery status changes |
 | GET | `/deliveries?from=&to=&branchId=` | `deliveries.read` | Delivery register |
+
+## Phase 10 endpoints (providers, ADR 0018)
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/webhooks/whatsapp` | public (verify token) | Meta subscription handshake; returns `hub.challenge` as text, 403 on wrong token, 404 when not configured |
+| POST | `/webhooks/whatsapp` | `X-Hub-Signature-256` | HMAC-SHA256 of raw body with app secret, else 401. Status callbacks move deliveries forward only (ACCEPTED → DELIVERED → READ; ACCEPTED → FAILED marks the notification DEAD for manual retry). Replies STOP/UNSUBSCRIBE/OPT OUT withdraw WhatsApp consent (audited) |
+| PUT | `/settings/notifications` | `settings.manage` | Approved template name/language per event, email subject, quiet hours |
+
+`POST /customer/auth/otp/request` returns **503 `OTP_DELIVERY_FAILED`** when the WhatsApp provider refuses the code.
+Manual retry (`POST /notifications/:id/retry`) keeps the attempt count; after the automatic limit it grants one more attempt.
 
 ### Customer API (customer access token; identity from token only)
 

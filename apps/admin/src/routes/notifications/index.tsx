@@ -44,8 +44,9 @@ export function NotificationCentre() {
   return (
     <AppShell title="Notifications">
       <p className="muted small">
-        “Accepted” means the provider took the message; it is not proof of delivery. Providers are
-        mocked until WhatsApp and email services are chosen.
+        “Accepted” means the provider took the message; it is not proof of delivery. WhatsApp
+        messages become “delivered” or “read” only when WhatsApp confirms it. Email has no delivery
+        confirmation.
       </p>
       <SelectField
         id="status"
@@ -58,7 +59,7 @@ export function NotificationCentre() {
         <option value="DEAD">Gave up</option>
         <option value="PENDING">Pending</option>
         <option value="COMPLETED">Completed</option>
-        <option value="SKIPPED">Skipped (no consent / address)</option>
+        <option value="SKIPPED">Skipped (no consent / address / template)</option>
       </SelectField>
       {error ? (
         <p role="alert" className="form-error">

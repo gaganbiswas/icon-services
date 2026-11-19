@@ -94,6 +94,44 @@ describe('auth settings', () => {
     ).toThrow(/OTP_PROVIDER/);
   });
 
+  it('requires complete Meta and SMTP configuration when selected', () => {
+    expect(() => parseEnv({ ...valid, WHATSAPP_PROVIDER: 'meta' })).toThrow(
+      /WHATSAPP_ACCESS_TOKEN/,
+    );
+    expect(() => parseEnv({ ...valid, OTP_PROVIDER: 'whatsapp' })).toThrow(
+      /WHATSAPP_OTP_TEMPLATE_NAME/,
+    );
+    expect(() => parseEnv({ ...valid, EMAIL_PROVIDER: 'smtp' })).toThrow(/SMTP_HOST/);
+    expect(
+      parseEnv({
+        ...valid,
+        WHATSAPP_PROVIDER: 'meta',
+        WHATSAPP_GRAPH_API_VERSION: 'v23.0',
+        WHATSAPP_PHONE_NUMBER_ID: '123456789012345',
+        WHATSAPP_ACCESS_TOKEN: 'EAAG' + 'x'.repeat(40),
+        WHATSAPP_APP_SECRET: 's'.repeat(32),
+        WHATSAPP_WEBHOOK_VERIFY_TOKEN: 'v'.repeat(24),
+        WHATSAPP_ORGANIZATION_CODE: 'DEV',
+      }).WHATSAPP_PROVIDER,
+    ).toBe('meta');
+  });
+
+  it('treats empty values as unset', () => {
+    expect(parseEnv({ ...valid, WHATSAPP_ACCESS_TOKEN: '', SMTP_PORT: '' }).SMTP_PORT).toBe(587);
+  });
+
+  it('refuses mock notification providers in production', () => {
+    expect(() =>
+      parseEnv({
+        ...valid,
+        NODE_ENV: 'production',
+        AUTH_COOKIE_SECURE: 'true',
+        OTP_PROVIDER: 'whatsapp',
+        EMAIL_PROVIDER: 'disabled',
+      }),
+    ).toThrow(/mock notification providers/);
+  });
+
   it('refuses insecure cookies in production', () => {
     expect(() =>
       parseEnv({ ...valid, NODE_ENV: 'production', AUTH_COOKIE_SECURE: 'false' }),

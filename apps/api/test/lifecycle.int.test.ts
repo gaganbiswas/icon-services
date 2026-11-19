@@ -427,7 +427,7 @@ describe('Job lifecycle, technician work and notifications (real PostgreSQL)', (
 
       expect(await dispatcher.dispatchDue()).toBe(2);
       expect(whatsapp.sent).toHaveLength(2);
-      expect(whatsapp.sent.map((m) => m.template).sort()).toEqual([
+      expect(whatsapp.sent.map((m) => m.template?.name).sort()).toEqual([
         'job_received_v1',
         'job_status_changed_v1',
       ]);

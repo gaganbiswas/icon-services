@@ -7,7 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phases 1–6, 8 and 9 complete — through delivery with hand-over record and delivery challan.
+> **Status:** Phases 1–6 and 8–10 complete — through delivery, plus real WhatsApp (Meta Cloud API), SMTP email
+> and WhatsApp sign-in codes behind configuration (mocks remain for development).
 > Invoicing (Phase 7) waits for written tax confirmation from the accountant.
 
 ## Repository layout
@@ -27,14 +28,14 @@ Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
 - **Bun 1.4.4** — the only package manager (do not use npm/pnpm/yarn).
 - **Node.js 24 LTS** — runtime for the API, Next.js and Expo tooling (`.nvmrc`).
-- **Docker** — local PostgreSQL, Redis and SeaweedFS (S3).
+- **Docker** — local PostgreSQL, Redis, SeaweedFS (S3) and Mailpit (captures email; UI http://localhost:8025).
 
 ## Getting started
 
 ```sh
 cp .env.example .env          # local-only placeholders — set JWT_ACCESS_SECRET and SEED_ADMIN_PASSWORD
 bun install
-bun run services:up           # PostgreSQL :5433, Redis :6380, S3 :8333 (localhost only)
+bun run services:up           # PostgreSQL :5433, Redis :6380, S3 :8333, SMTP :1025 (localhost only)
 node node_modules/playwright-core/cli.js install --only-shell chromium   # PDF receipts (one-time)
 bun run build
 bun run db:migrate            # apply Prisma migrations to the dev database

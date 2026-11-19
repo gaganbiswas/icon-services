@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 9 (2026-11-18).
+and `packages/database/prisma/migrations/`. Updated: Phase 10 (2026-11-19).
 
 ## Conventions
 
@@ -130,6 +130,13 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `deliveries` | One per dispatch / hand-over; unique `(organization_id, challan_number)`; partial unique indexes: one DISPATCHED and one COMPLETED per job; CHECK: completed ⇒ recipient, relationship, proof (photo file for PHOTO_PROOF), authorization note unless SELF, balance snapshot, delivered time/by; override reason ⇔ approver; FAILED ⇒ reason. **Trigger:** completed/failed rows final, no deletes |
 | `delivery_items` | Items handed back (description, returned, condition); append-only |
 
+## Phase 10 notes (ADR 0018)
+
+- `notification_deliveries.status`: adds `SKIPPED_NOT_CONFIGURED` (channel disabled or no approved template).
+  `DELIVERED`/`READ` (with `delivered_at`/`read_at`) are set only by signed WhatsApp webhook callbacks; email stays `ACCEPTED`.
+- `customer_consents.withdrawn_source` may be `WHATSAPP_REPLY` (customer replied STOP).
+- Setting `notifications`: template references per event and quiet hours.
+
 ## Seeds
 
 | Command | Environment | Effect |
@@ -142,6 +149,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase10_delivery_status` | `DeliveryStatus` value `SKIPPED_NOT_CONFIGURED` |
 | `…_phase9_delivery` | Deliveries, items; constraints and triggers |
 | `…_phase8_payments` | Payments and refunds; immutability triggers |
 | `…_phase6_inventory` | Parts, suppliers, branch stock, ledger, job parts; constraints and append-only trigger |

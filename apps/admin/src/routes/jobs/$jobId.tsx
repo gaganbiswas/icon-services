@@ -331,6 +331,7 @@ const DELIVERY_LABELS: Record<string, string> = {
   FAILED: 'failed',
   SKIPPED_NO_CONSENT: 'skipped — no consent',
   SKIPPED_NO_ADDRESS: 'skipped — no address',
+  SKIPPED_NOT_CONFIGURED: 'skipped — channel or template not configured',
   DELIVERED: 'delivered',
   READ: 'read',
 };

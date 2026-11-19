@@ -51,7 +51,7 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
     ...overrides,
   });
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(env)] }).compile();
-  const app = moduleRef.createNestApplication({ logger: false });
+  const app = moduleRef.createNestApplication({ logger: false, rawBody: true });
   configureApp(app, env);
   await app.init();
   const prisma = createPrismaClient({ databaseUrl, maxConnections: 2 });

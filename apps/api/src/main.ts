@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
   const env = parseEnv(process.env);
   const logger = createLogger(env);
 
-  const app = await NestFactory.create(AppModule.forRoot(env), { logger });
+  const app = await NestFactory.create(AppModule.forRoot(env), { logger, rawBody: true });
   configureApp(app, env);
   app.enableShutdownHooks();
 
