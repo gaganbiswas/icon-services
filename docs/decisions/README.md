@@ -31,5 +31,6 @@ Architecture/Product Decision Records (ADRs). Each decision has a status:
 | 0020 | Production hosting (VPS + Docker, India, RPO 24 h / RTO 1 day) | Approved | 2026-11-19 |
 | 0021 | Business identity; GST invoices only (regular scheme) | Approved | 2026-11-19 |
 | 0022 | GST invoicing with owner-approved defaults | Approved (defaults; accountant review before production) | 2026-11-19 |
+| 0023 | Customer web portal: signed-in area, cookie sessions | Approved | 2026-11-19 |
 
 New decisions: copy `template.md`, use the next number, add a row above.

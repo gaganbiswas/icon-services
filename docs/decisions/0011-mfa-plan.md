@@ -9,7 +9,7 @@
 - Method: TOTP (RFC 6238, 30 s, 6 digits, SHA-1 for authenticator compatibility),
   enrolled by QR code in the admin panel.
 - Required for users holding any of: `roles.manage`, `users.manage`,
-  `settings.manage`, `invoices.issue`, `invoices.void`, `payments.refund`,
+  `settings.manage`, `invoices.issue`, `invoices.void`, `credit_notes.issue`, `payments.refund`,
   `branches.all`. Optional for others.
 - TOTP secrets encrypted at rest (AES-256-GCM, key from secrets manager), never
   logged or returned after enrolment.

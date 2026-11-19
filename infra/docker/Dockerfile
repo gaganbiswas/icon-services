@@ -24,9 +24,11 @@ COPY . .
 RUN bun install --frozen-lockfile --filter '@icon/api' --filter '@icon/web' --filter '@icon/admin' \
       --filter '@icon/database' --filter '@icon/contracts' --filter '@icon/config'
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+ARG NEXT_PUBLIC_ORGANIZATION_CODE=DEV
 ARG VITE_API_BASE_URL=http://localhost:4000
 ARG VITE_CUSTOMER_PORTAL_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
+    NEXT_PUBLIC_ORGANIZATION_CODE=${NEXT_PUBLIC_ORGANIZATION_CODE} \
     VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_CUSTOMER_PORTAL_URL=${VITE_CUSTOMER_PORTAL_URL}
 RUN bunx turbo run build --filter=@icon/api --filter=@icon/web --filter=@icon/admin

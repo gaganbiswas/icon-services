@@ -78,6 +78,7 @@ export const MFA_PRIVILEGED_PERMISSIONS = [
   'settings.manage',
   'invoices.issue',
   'invoices.void',
+  'credit_notes.issue',
   'payments.refund',
   'branches.all',
 ] as const satisfies readonly PermissionCode[];

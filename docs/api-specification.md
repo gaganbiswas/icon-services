@@ -171,6 +171,14 @@ References that look like card numbers are rejected.
 `POST /customer/auth/otp/request` returns **503 `OTP_DELIVERY_FAILED`** when the WhatsApp provider refuses the code.
 Manual retry (`POST /notifications/:id/retry`) keeps the attempt count; after the automatic limit it grants one more attempt.
 
+## Customer web-portal sessions (ADR 0023)
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/customer/auth/web/verify` | Body as `/customer/auth/otp/verify`; returns access token only and sets HttpOnly `icon_crt` cookie |
+| POST | `/customer/auth/web/refresh` | Cookie + `X-ICON-CSRF: 1` + allowed Origin; rotates the cookie |
+| POST | `/customer/auth/web/logout` | Cookie + CSRF header; revokes the session, clears the cookie (204) |
+
 ## Phase 7 endpoints (GST invoicing, ADR 0021/0022)
 
 Invoices are issued only when the business profile (with GSTIN), currency and an **approved** tax configuration exist.

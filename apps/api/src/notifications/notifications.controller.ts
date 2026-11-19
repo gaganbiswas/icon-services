@@ -110,12 +110,14 @@ export class NotificationsController {
           'Only failed notifications can be retried',
         );
       }
-      await tx.notificationOutbox.update({
-        where: { id },
-        // Attempt numbers keep counting (deliveries are unique per attempt); a
-        // manual retry after the limit gets one more attempt.
-        data: { status: 'PENDING', nextAttemptAt: new Date(), lastError: null },
-      });
+      // Attempt numbers keep counting (deliveries are unique per attempt); a
+      // manual retry after the limit gets one more attempt. "Due now" uses the
+      // database clock — the dispatcher compares with now(), and an API-server
+      // clock even slightly ahead would leave the retry briefly not due.
+      await tx.$executeRaw`
+        UPDATE "notification_outbox"
+        SET "status" = 'PENDING', "next_attempt_at" = now(), "last_error" = NULL, "updated_at" = now()
+        WHERE "id" = ${id}::uuid`;
       await this.audit.record(tx, {
         organizationId: principal.organizationId,
         branchId: row.branchId,

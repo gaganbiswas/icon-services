@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Builds the production images for one environment (frontends embed their API address).
-#   IMAGE_TAG=2026-11-19.1 API_DOMAIN=api.example.com PORTAL_DOMAIN=service.example.com \
+#   IMAGE_TAG=2026-11-19.1 API_DOMAIN=api.example.com PORTAL_DOMAIN=service.example.com ORGANIZATION_CODE=ICON \
 #   [IMAGE_REGISTRY=registry.example.com/icon] [PLATFORM=linux/amd64] deploy/production/build-images.sh
 set -euo pipefail
-: "${IMAGE_TAG:?}" "${API_DOMAIN:?}" "${PORTAL_DOMAIN:?}"
+: "${IMAGE_TAG:?}" "${API_DOMAIN:?}" "${PORTAL_DOMAIN:?}" "${ORGANIZATION_CODE:?set ORGANIZATION_CODE to the organisation code created at first-admin setup}"
 registry="${IMAGE_REGISTRY:-icon}"
 cd "$(dirname "$0")/../.."
 # PLATFORM=linux/amd64 when building on an ARM Mac for an x86 server.
 args=(${PLATFORM:+--platform "$PLATFORM"}
   --build-arg "NEXT_PUBLIC_API_BASE_URL=https://$API_DOMAIN"
+  --build-arg "NEXT_PUBLIC_ORGANIZATION_CODE=$ORGANIZATION_CODE"
   --build-arg "VITE_API_BASE_URL=https://$API_DOMAIN"
   --build-arg "VITE_CUSTOMER_PORTAL_URL=https://$PORTAL_DOMAIN"
   --label "org.opencontainers.image.revision=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"

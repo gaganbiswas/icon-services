@@ -26,7 +26,7 @@ email, OTP), audit trail, issued documents.
 | T2 | Spoofing | Stolen refresh token | Rotation with reuse detection → revoke family; HttpOnly SameSite cookies (web); OS secure storage (mobile) | Phase 2: rotation + reuse detection — tested |
 | T3 | Spoofing | Forged provider webhook | Verify webhook signatures; reject unsigned | Phase 10: HMAC-SHA256 constant-time, unsigned/tampered → 401 — tested |
 | T4 | Tampering | Customer changes job/customer ID in URL (IDOR) | Customer identity from token only; ownership checks in queries; IDOR tests | Phase 2–3: org/branch scoping, 404 on foreign IDs; customer identity from token — tested. Phase 11: every route checked for missing/wrong token and missing permission (authorization matrix) — tested |
-| T5 | Tampering | Staff edits issued invoice / price | Issued invoices immutable; corrections via credit notes; permissioned and audited | Phase 7 |
+| T5 | Tampering | Staff edits issued invoice / price | Issued invoices immutable (DB triggers); corrections via append-only credit notes; permissioned (MFA-privileged) and audited | Done (Phase 7) |
 | T6 | Tampering | Status jump bypassing approval | Transition matrix in domain service; approval-before-repair check | Phase 4–5 |
 | T7 | Tampering | Malicious upload (HTML/SVG/executable) | MIME sniffing, allow-list, size limits, random keys, `Content-Disposition: attachment`, malware scan where available | Phase 3 |
 | T8 | Repudiation | "I didn't approve that estimate" | Store decision, version, timestamp, method, IP/device where lawful; audit log | Phase 5 |

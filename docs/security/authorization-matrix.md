@@ -7,7 +7,7 @@ Every route is authenticated unless public. Staff routes enforce all listed perm
 scope records to the organization and permitted branches (out-of-scope records → 404). Customer routes take
 identity from the customer token only. Public routes are rate-limited and protected by their own token/signature.
 
-Routes: 134 (public 15, customer 17, staff 102).
+Routes: 137 (public 18, customer 17, staff 102).
 
 | Method | Path                                         | Access   | Permissions                      |
 | ------ | -------------------------------------------- | -------- | -------------------------------- |
@@ -34,6 +34,9 @@ Routes: 134 (public 15, customer 17, staff 102).
 | POST   | `/api/v1/customer/auth/otp/request`          | public   | —                                |
 | POST   | `/api/v1/customer/auth/otp/verify`           | public   | —                                |
 | POST   | `/api/v1/customer/auth/refresh`              | public   | —                                |
+| POST   | `/api/v1/customer/auth/web/logout`           | public   | —                                |
+| POST   | `/api/v1/customer/auth/web/refresh`          | public   | —                                |
+| POST   | `/api/v1/customer/auth/web/verify`           | public   | —                                |
 | GET    | `/api/v1/customer/branches`                  | customer | —                                |
 | PUT    | `/api/v1/customer/consents`                  | customer | —                                |
 | POST   | `/api/v1/customer/credit-notes/:id/pdf`      | customer | —                                |

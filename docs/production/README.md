@@ -12,7 +12,7 @@
 | `web` | Customer portal (Next.js) | No (via edge) |
 | `postgres`, `redis`, `s3` | Data stores | No |
 
-Domains (examples): `staff.<domain>` (staff panel), `api.<domain>`, `service.<domain>` (customer portal),
+Domains (examples; all must be subdomains of **one** registrable domain — the customer portal's sign-in cookie is SameSite=Strict, ADR 0023): `staff.<domain>` (staff panel), `api.<domain>`, `service.<domain>` (customer portal),
 `files.<domain>` (signed downloads).
 
 ## 2. Server preparation (once)
@@ -37,7 +37,7 @@ Domains (examples): `staff.<domain>` (staff panel), `api.<domain>`, `service.<do
 ## 3. Build and release
 
 ```bash
-IMAGE_TAG=2026-11-19.1 API_DOMAIN=api.example.com PORTAL_DOMAIN=service.example.com deploy/production/build-images.sh
+IMAGE_TAG=2026-11-19.1 API_DOMAIN=api.example.com PORTAL_DOMAIN=service.example.com ORGANIZATION_CODE=ICON deploy/production/build-images.sh
 ```
 
 Build on a trusted machine or CI, push to a private registry (`IMAGE_REGISTRY`), or build on the server.
