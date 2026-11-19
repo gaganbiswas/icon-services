@@ -47,5 +47,7 @@ export const CustomerProfileSchema = z.object({
 export type CustomerProfile = z.infer<typeof CustomerProfileSchema>;
 
 /** Web portal: the refresh token stays in an HttpOnly cookie and is never returned to scripts. */
-export const CustomerWebTokenResponseSchema = CustomerTokenResponseSchema.omit({ refreshToken: true });
+export const CustomerWebTokenResponseSchema = CustomerTokenResponseSchema.omit({
+  refreshToken: true,
+});
 export type CustomerWebTokenResponse = z.infer<typeof CustomerWebTokenResponseSchema>;
