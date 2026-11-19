@@ -1,0 +1,135 @@
+# Production stack on one Linux VPS (Phase 12, ADR 0020). Only the edge (Caddy) is
+# reachable from the internet; databases and storage stay on the private network.
+#
+#   ENV_FILE=/etc/icon/production.env docker compose -f deploy/production/compose.yml up -d
+#
+# Secrets live in ENV_FILE (root-owned, chmod 600) — never in this repository.
+name: icon
+
+x-app: &app
+  image: ${IMAGE_REGISTRY:-icon}/api:${IMAGE_TAG:?set IMAGE_TAG}
+  env_file: ${ENV_FILE:?set ENV_FILE}
+  environment:
+    NODE_ENV: production
+    API_PORT: '4000'
+    DATABASE_URL: postgresql://icon:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/icon_service?schema=public
+    REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+    S3_ENDPOINT: http://s3:8333
+    S3_FORCE_PATH_STYLE: 'true'
+    HTTP_TRUST_PROXY: '1'
+  restart: unless-stopped
+  read_only: true
+  tmpfs: ['/tmp:size=256m']
+  security_opt: ['no-new-privileges:true']
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    s3: { condition: service_healthy }
+  logging: &logging
+    driver: json-file
+    options: { max-size: '20m', max-file: '10' }
+
+services:
+  edge:
+    image: ${IMAGE_REGISTRY:-icon}/edge:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      CADDY_TLS_MODE: ${CADDY_TLS_MODE:-acme}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:?set PORTAL_DOMAIN}
+      FILES_DOMAIN: ${FILES_DOMAIN:?set FILES_DOMAIN}
+    volumes: ['caddy-data:/data', 'caddy-config:/config']
+    depends_on: [api, web]
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  api:
+    <<: *app
+
+  worker:
+    <<: *app
+    command: ['node', '--enable-source-maps', 'apps/api/dist/worker.js']
+    healthcheck: { disable: true }
+
+  web:
+    image: ${IMAGE_REGISTRY:-icon}/web:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ['/tmp:size=64m', '/app/apps/web/.next/cache:size=128m,uid=1000']
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  postgres:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: icon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: icon_service
+    volumes: ['pg-data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U icon -d icon_service']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:7.4.11-alpine
+    restart: unless-stopped
+    # Password required (private network only, but defence in depth).
+    command: ['sh', '-c', 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    volumes: ['redis-data:/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  s3:
+    image: chrislusf/seaweedfs:4.54
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/opt/icon/entrypoint.sh']
+    env_file: ${ENV_FILE:?set ENV_FILE}
+    volumes:
+      - ../../infra/docker/seaweedfs/entrypoint.sh:/opt/icon/entrypoint.sh:ro
+      - s3-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  # One-off tasks: docker compose -f … run --rm <task>
+  migrate:
+    <<: *app
+    profiles: ['tools']
+    restart: 'no'
+    working_dir: /app/packages/database
+    command: ['node', '../../node_modules/prisma/build/index.js', 'migrate', 'deploy']
+
+  ensure-bucket:
+    <<: *app
+    profiles: ['tools']
+    restart: 'no'
+    command: ['node', 'apps/api/dist/cli/ensure-bucket.js']
+
+  first-admin:
+    <<: *app
+    profiles: ['tools']
+    restart: 'no'
+    command: ['node', 'packages/database/dist/seed/first-admin.js']
+
+volumes:
+  pg-data:
+  redis-data:
+  s3-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,18 @@
+# Keep build context small and free of secrets.
+.git
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/test-results
+**/playwright-report
+**/coverage
+# Mobile app is not deployed by these images; keep its manifest for the lockfile.
+apps/mobile/*
+!apps/mobile/package.json
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+docs

@@ -116,6 +116,19 @@ jobs:
           path: apps/admin/test-results
           retention-days: 7
 
+  images:
+    name: Production images build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build api, web and edge images (not pushed)
+        run: IMAGE_TAG=ci-${{ github.sha }} API_DOMAIN=api.example.invalid PORTAL_DOMAIN=service.example.invalid deploy/production/build-images.sh
+      - name: Validate production compose file
+        run: |
+          printf 'IMAGE_TAG=ci\nENV_FILE=/dev/null\nPOSTGRES_PASSWORD=x\nREDIS_PASSWORD=x\nACME_EMAIL=ops@example.invalid\nADMIN_DOMAIN=a.example.invalid\nAPI_DOMAIN=b.example.invalid\nPORTAL_DOMAIN=c.example.invalid\nFILES_DOMAIN=d.example.invalid\n' > /tmp/compose.env
+          docker compose -f deploy/production/compose.yml --env-file /tmp/compose.env config --quiet
+
   security:
     name: Dependency audit and secret scan
     runs-on: ubuntu-24.04

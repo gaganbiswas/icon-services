@@ -1,7 +1,7 @@
 # Deployment and operations runbook
 
-> Status: Phase 11 draft. Hosting, region, domain and RPO/RTO are **not yet chosen** (owner questions G49–G52);
-> sections marked _TBD_ are completed in Phase 12. Never put real secrets in this file.
+> Status: Phase 12. Hosting decided (ADR 0020: Linux VPS + Docker, India, RPO 24 h / RTO 1 day). Step-by-step
+> production deployment: [`docs/production/README.md`](production/README.md). Never put real secrets in this file.
 
 ## 1. Components
 
@@ -73,6 +73,7 @@ Local one-command drill (development only, throw-away keys): `bun run backup:dri
 | Date | Environment | Backup | Result | Restore time | By |
 |------|-------------|--------|--------|--------------|----|
 | 2026-11-19 | Local development | icon-20261119T112202Z | PASSED — 9 migrations, 13 triggers, row counts matched; tampered file and wrong key correctly rejected | 1 s | Claude Code |
+| 2026-11-19 | Local production stack (Phase 12 images) | icon-20261119T160647Z + files archive | PASSED — 10 migrations, 13 triggers, admin present; files archive checksum OK and restored into a new volume | < 1 min | Claude Code |
 
 ## 6. Monitoring and alerts (_TBD with host_)
 

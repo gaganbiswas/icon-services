@@ -28,5 +28,6 @@ Architecture/Product Decision Records (ADRs). Each decision has a status:
 | 0017 | Delivery, hand-over and delivery challan | Approved (with defaults) | 2026-11-18 |
 | 0018 | Notification providers (Meta WhatsApp, SMTP, WhatsApp OTP) | Approved; queue item proposed | 2026-11-18 |
 | 0019 | Reports, dashboard and exports | Approved with defaults | 2026-11-19 |
+| 0020 | Production hosting (VPS + Docker, India, RPO 24 h / RTO 1 day) | Approved | 2026-11-19 |
 
 New decisions: copy `template.md`, use the next number, add a row above.

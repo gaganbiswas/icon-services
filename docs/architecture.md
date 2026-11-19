@@ -81,9 +81,9 @@ metadata in `documents`; downloads via short-lived signed URLs after authorizati
 
 ## 6. Environments
 
-- Local: Docker Compose — PostgreSQL 17 (:5433), Redis 7.4 (:6380), SeaweedFS S3 (:8333), bound to 127.0.0.1. Mailpit for email capture proposed for Phase 10.
+- Local: Docker Compose — PostgreSQL 17 (:5433), Redis 7.4 (:6380), SeaweedFS S3 (:8333), Mailpit SMTP (:1025, UI :8025), bound to 127.0.0.1.
 - CI: install, lint, typecheck, unit, integration (ephemeral Postgres/Redis), E2E.
-- Staging/production: host not yet chosen (owner question G49–G52).
+- Staging/production: one Linux VPS in India running `deploy/production/compose.yml` behind Caddy (ADR 0020, `docs/production/README.md`).
 
 ## 7. Local ports
 

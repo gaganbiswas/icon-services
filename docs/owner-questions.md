@@ -107,10 +107,10 @@ confirmation from the business's accountant / tax professional.
 ## G. Hosting, security, data
 
 49. Hosting preference (AWS, Azure, GCP, DigitalOcean, Indian cloud provider,
-    on-premises server) and monthly budget range. _answer_
-50. Data residency requirement (must data stay in India / a specific country?). _answer_
+    on-premises server) and monthly budget range. **Linux VPS + Docker, provider still to choose (ADR 0020).**
+50. Data residency requirement (must data stay in India / a specific country?). **India (ADR 0020).**
 51. Domain names for web app and API. _answer_
-52. Acceptable data loss (RPO) and downtime (RTO) — e.g. 15 min / 4 hours. _answer_
+52. Acceptable data loss (RPO) and downtime (RTO) — e.g. 15 min / 4 hours. **24 h / 1 day (ADR 0020).**
 53. Data retention periods: customer data, job records, invoices (tax law may
     require years), photos, message logs. **[ACCOUNTANT/LEGAL]** _answer_
 54. Do you have a privacy policy, terms of service, and consent wording, or

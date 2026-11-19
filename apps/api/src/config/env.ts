@@ -59,6 +59,8 @@ export const EnvSchema = z
 
     // Object storage (S3-compatible; SeaweedFS locally, ADR 0009)
     S3_ENDPOINT: z.url().optional(),
+    /** Browser-facing storage URL for signed links when S3_ENDPOINT is internal (e.g. https://files.example.com). */
+    S3_PUBLIC_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
     S3_REGION: z.string().min(1).default('us-east-1'),
     S3_ACCESS_KEY_ID: z.string().min(1),
     S3_SECRET_ACCESS_KEY: z.string().min(1),

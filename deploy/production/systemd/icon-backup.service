@@ -1,0 +1,11 @@
+[Unit]
+Description=ICON Service daily encrypted backup
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/icon/backup.env
+WorkingDirectory=/opt/icon
+ExecStart=/opt/icon/deploy/production/backup-all.sh
+Nice=10

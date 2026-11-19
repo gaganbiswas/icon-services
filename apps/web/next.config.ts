@@ -1,7 +1,12 @@
+import path from 'node:path';
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server for the production container (Phase 12).
+  output: 'standalone',
+  outputFileTracingRoot: path.resolve(import.meta.dirname, '../..'),
   poweredByHeader: false,
   // Security headers; HSTS is also set at the TLS-terminating proxy in production.
   headers() {

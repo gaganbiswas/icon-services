@@ -14,16 +14,24 @@ import type { Env } from '../config/env.js';
 @Injectable()
 export class StorageService implements OnModuleDestroy {
   private readonly client: S3Client;
+  /** Signs browser download links; uses the public endpoint when the API reaches storage internally. */
+  private readonly signer: S3Client;
   private readonly bucket: string;
 
   constructor(@Inject(APP_ENV) private readonly env: Env) {
     this.bucket = env.S3_BUCKET;
-    this.client = new S3Client({
-      region: env.S3_REGION,
-      forcePathStyle: env.S3_FORCE_PATH_STYLE,
-      credentials: { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY },
-      ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
-    });
+    const client = (endpoint: string | undefined) =>
+      new S3Client({
+        region: env.S3_REGION,
+        forcePathStyle: env.S3_FORCE_PATH_STYLE,
+        credentials: {
+          accessKeyId: env.S3_ACCESS_KEY_ID,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        },
+        ...(endpoint ? { endpoint } : {}),
+      });
+    this.client = client(env.S3_ENDPOINT);
+    this.signer = env.S3_PUBLIC_ENDPOINT ? client(env.S3_PUBLIC_ENDPOINT) : this.client;
   }
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
@@ -47,7 +55,7 @@ export class StorageService implements OnModuleDestroy {
     const expiresIn = this.env.SIGNED_URL_TTL_SECONDS;
     const safeName = downloadName.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 100) || 'file';
     const url = await getSignedUrl(
-      this.client,
+      this.signer,
       new GetObjectCommand({
         Bucket: this.bucket,
         Key: key,
@@ -65,5 +73,6 @@ export class StorageService implements OnModuleDestroy {
 
   onModuleDestroy(): void {
     this.client.destroy();
+    if (this.signer !== this.client) this.signer.destroy();
   }
 }

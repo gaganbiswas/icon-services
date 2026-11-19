@@ -16,7 +16,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:seed:dev": "node dist/seed/dev.js",
-    "db:seed:uat": "node dist/seed/uat.js"
+    "db:seed:uat": "node dist/seed/uat.js",
+    "db:first-admin": "node dist/seed/first-admin.js"
   },
   "devDependencies": {
     "@icon/config": "workspace:*",

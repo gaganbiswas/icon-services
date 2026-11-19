@@ -1,0 +1,67 @@
+# Production edge (Phase 12, ADR 0020): automatic HTTPS (Let's Encrypt), security headers,
+# staff panel static files, reverse proxy to API, customer portal and file downloads.
+# Domains come from the environment; CADDY_TLS_MODE=acme (production) or internal (local test).
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+(tls_acme) {
+}
+
+(tls_internal) {
+	tls internal
+}
+
+(security) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+# Staff panel (SPA). No inline scripts; API and file domains are the only remote origins.
+{$ADMIN_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+	import security
+	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://{$FILES_DOMAIN}; connect-src 'self' https://{$API_DOMAIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+	encode zstd gzip
+	root * /srv/admin
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@html not path /assets/*
+	header @html Cache-Control "no-cache"
+	try_files {path} /index.html
+	file_server
+}
+
+{$API_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+	import security
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy api:4000
+}
+
+{$PORTAL_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+	import security
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Signed, short-lived download links only (writes go API → storage on the private network).
+{$FILES_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+	import security
+	@read method GET HEAD
+	handle @read {
+		reverse_proxy s3:8333
+	}
+	respond 405
+}
