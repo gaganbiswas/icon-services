@@ -24,21 +24,21 @@ confirmation from the business's accountant / tax professional.
 
 ## B. Legal entity and business profile
 
-7. Legal registered name of the business and trading/display name. _answer_
-8. Legal entity type (proprietorship, partnership, LLP, private limited, other). _answer_
+7. Legal registered name of the business and trading/display name. **ICON INFOSYS (as on GST registration; confirm legal vs trading name are the same).** (2026-11-19)
+8. Legal entity type (proprietorship, partnership, LLP, private limited, other). _answer_ (GSTIN PAN AHDPB5074F has 4th character "P" = individual/proprietorship — please confirm.)
 9. Registered address and business/service-centre address(es), including
-   country, state, PIN/postal code. _answer_
-10. Business phone, email, website. _answer_
+   country, state, PIN/postal code. **MIG-7, Nilganj Road, Sodepur, Kolkata 700110, West Bengal, India.** (Registered and service-centre address the same? Other branches? — confirm.)
+10. Business phone, email, website. **Contact: Uttam Biswas — 98303 77112, 93305 22205, 98301 85448, 99032 76666; info@iconinfosys.co.in, uttam@iconinfosys.co.in.** Website and which number/email to print on documents: _answer_
 11. Default currency (do not assume INR). _answer_
 12. Time zone. _answer_
 13. Financial year start/end (e.g. 1 April – 31 March?). **[ACCOUNTANT]** _answer_
 
 ## C. Tax and invoicing **[ACCOUNTANT]**
 
-14. Is the business GST-registered? GSTIN(s) per state/branch? _answer_
-15. Composition scheme or regular scheme? _answer_
+14. Is the business GST-registered? GSTIN(s) per state/branch? **Yes — 19AHDPB5074F1ZK (West Bengal; format and check digit validated).**
+15. Composition scheme or regular scheme? **Regular.**
 16. In what situations should a **NON_GST** invoice be issued, and what exact
-    legal wording must appear on it (e.g. "Bill of Supply" or other)? _answer_
+    legal wording must appear on it (e.g. "Bill of Supply" or other)? **Never — GST invoices only (ADR 0021).**
 17. Tax rates applicable to: labour/service charges, spare parts, on-site
     visit charges, diagnostic fees. With HSN/SAC codes for each. _answer_
 18. Place-of-supply rules to apply (intra-state CGST+SGST vs inter-state IGST)
