@@ -9,3 +9,8 @@
 - **Two-step sign-in**: required for administrators in production. If a colleague loses their phone, an
   administrator with user-management rights can reset it (reason required; they are signed out).
 - **Audit log**: who did what and when.
+- **Settings → Business and invoicing**: business name, GSTIN, address, contacts and signatory; GST categories, HSN/SAC
+  codes and rates; invoice wording and number formats. Invoices can be issued only after the **accountant has
+  approved** the tax configuration (tick the approval box and record who approved it — audited).
+- **Settings → Users and roles**: add staff (they get a one-time set-up link), change roles and branches, deactivate
+  (with a reason), issue a new set-up link, reset someone's two-step sign-in, and adjust role permissions.

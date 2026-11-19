@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth';
 import { formMessage } from '../../lib/form-errors';
 import { useCan } from '../../lib/permissions';
 import { useResource } from '../../lib/use-resource';
+import { FormDialog } from '../FormDialog';
 import { SelectField } from '../Inputs';
 
 export function AssignmentsPanel({
@@ -27,6 +28,7 @@ export function AssignmentsPanel({
   );
   const [selected, setSelected] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<(typeof workspace.assignments)[number] | null>(null);
   const active = workspace.assignments.filter((a) => a.endedAt === null);
 
   async function run(action: () => Promise<unknown>) {
@@ -42,6 +44,21 @@ export function AssignmentsPanel({
 
   return (
     <div>
+      {removing ? (
+        <FormDialog
+          title={`Remove ${removing.technician.fullName}?`}
+          fields={[{ name: 'reason', label: 'Reason', type: 'textarea', required: true }]}
+          submitLabel="Remove technician"
+          onSubmit={async (v) => {
+            await client.authorized(
+              `/jobs/${jobId}/assignments/${removing.id}?reason=${encodeURIComponent(v['reason'] ?? '')}`,
+              { method: 'DELETE' },
+            );
+            onChanged();
+          }}
+          onClose={() => setRemoving(null)}
+        />
+      ) : null}
       {active.length === 0 ? <p className="muted">No technician assigned.</p> : null}
       <ul>
         {active.map((a) => (
@@ -49,21 +66,7 @@ export function AssignmentsPanel({
             {a.technician.fullName}{' '}
             <span className="muted small">since {new Date(a.assignedAt).toLocaleString()}</span>{' '}
             {canAssign ? (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  const reason = window.prompt('Reason for removing this technician?');
-                  if (reason?.trim()) {
-                    void run(() =>
-                      client.authorized(
-                        `/jobs/${jobId}/assignments/${a.id}?reason=${encodeURIComponent(reason.trim())}`,
-                        { method: 'DELETE' },
-                      ),
-                    );
-                  }
-                }}
-              >
+              <button type="button" className="secondary" onClick={() => setRemoving(a)}>
                 Unassign
               </button>
             ) : null}

@@ -200,6 +200,19 @@ async function complete(id: string, tech: string, summary: string) {
   });
 }
 
+/** Prepares and issues the job's GST invoice as Accounts; returns its total. */
+async function invoice(jobId: string): Promise<string> {
+  const draft = await call<{ id: string }>('accounts', 'POST', `/jobs/${jobId}/invoices`);
+  const issued = await call<{ total: string }>(
+    'accounts',
+    'POST',
+    `/invoices/${draft.id}/issue`,
+    undefined,
+    { 'Idempotency-Key': key() },
+  );
+  return issued.total;
+}
+
 const pay = (
   ctx: Ctx,
   job: { id: string; customerId: string },
@@ -230,10 +243,44 @@ async function main() {
     console.log('UAT data already present; nothing to do.');
     return;
   }
-  // Interim sample currency: the real currency is an open owner decision (question 15). XXX = "no currency".
+  // Currency INR (owner default, ADR 0022). Sample business with a FICTITIOUS GSTIN (19AAAAA0000A1ZZ) —
+  // never the real business details in UAT — and a tax approval explicitly marked as UAT-only.
   await call('superadmin', 'PUT', '/settings/money', {
-    value: { currency: 'XXX' },
-    reason: 'UAT sample data — replace with the confirmed currency',
+    value: { currency: 'INR' },
+    reason: 'UAT sample data',
+  });
+  await call('superadmin', 'PUT', '/settings/business', {
+    value: {
+      legalName: 'Sample Service Centre (UAT)',
+      tradeName: null,
+      gstin: '19AAAAA0000A1ZZ',
+      address: {
+        line1: '1 Sample Road',
+        line2: null,
+        city: 'Kolkata',
+        stateCode: '19',
+        postalCode: '700001',
+      },
+      phones: ['9800000000'],
+      emails: ['uat@example.test'],
+      website: null,
+      signatoryName: null,
+      signatoryDesignation: null,
+    },
+    reason: 'UAT sample business (fictitious)',
+  });
+  const tax = await call<{ tax: Record<string, unknown> }>('superadmin', 'GET', '/settings');
+  await call('superadmin', 'PUT', '/settings/tax', {
+    value: {
+      ...tax.tax,
+      status: 'APPROVED',
+      approval: {
+        approvedBy: 'UAT sample — NOT accountant-approved',
+        approvedOn: new Date().toISOString().slice(0, 10),
+        note: 'Test data only',
+      },
+    },
+    reason: 'UAT sample data only',
   });
 
   const laptopLines = [
@@ -370,6 +417,7 @@ async function main() {
   await decide(t6, 'APPROVED');
   await move(j6.id, 'tech1', 'REPAIR_IN_PROGRESS');
   await complete(j6.id, 'tech1', 'Battery replaced and calibrated; runtime now above 5 hours.');
+  await invoice(j6.id); // 3776.00 incl. GST
   await pay(ctx, j6, 'UAT-1', '1000', 'UPI', 'UTR-UAT-0106');
 
   // 7. Ready for delivery, paid in full (split payment).
@@ -396,8 +444,9 @@ async function main() {
   await move(j7.id, 'tech2', 'READY_FOR_DELIVERY', {
     customerMessage: 'Your printer is ready for collection.',
   });
+  await invoice(j7.id); // 885.00 incl. GST
   await pay(ctx, j7, 'UAT-1', '500', 'CASH');
-  await pay(ctx, j7, 'UAT-1', '250', 'UPI', 'UTR-UAT-0107');
+  await pay(ctx, j7, 'UAT-1', '385', 'UPI', 'UTR-UAT-0107');
 
   // 8. Delivered (customer pick-up).
   const j8 = await intake(ctx, {
@@ -423,7 +472,8 @@ async function main() {
   await move(j8.id, 'tech1', 'REPAIR_IN_PROGRESS');
   await complete(j8.id, 'tech1', 'Hinge kit replaced; lid opens and closes smoothly.');
   await move(j8.id, 'tech1', 'READY_FOR_DELIVERY');
-  await pay(ctx, j8, 'UAT-1', '2000', 'CARD_TERMINAL', 'APPR-UAT-0108');
+  await invoice(j8.id); // 2360.00 incl. GST
+  await pay(ctx, j8, 'UAT-1', '2360', 'CARD_TERMINAL', 'APPR-UAT-0108');
   await call(
     'delivery',
     'POST',
@@ -546,7 +596,7 @@ async function main() {
   }
 
   console.log(
-    'UAT data created: 12 jobs across the lifecycle, payments, a delivery, and stock for 4 parts.',
+    'UAT data created: 12 jobs across the lifecycle, 3 GST invoices, payments, a delivery, and stock for 4 parts.',
   );
 }
 

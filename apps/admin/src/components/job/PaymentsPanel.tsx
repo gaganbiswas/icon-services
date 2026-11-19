@@ -14,6 +14,7 @@ import { fieldErrors, formMessage, formText } from '../../lib/form-errors';
 import { newIdempotencyKey } from '../../lib/idempotency';
 import { useCan } from '../../lib/permissions';
 import { useResource } from '../../lib/use-resource';
+import { FormDialog } from '../FormDialog';
 import { FormField } from '../FormField';
 import { SelectField } from '../Inputs';
 import { ResourceView } from '../ResourceView';
@@ -30,6 +31,9 @@ export function PaymentsPanel({ job }: { job: JobDetail }) {
   const canRecord = useCan('payments.record');
   const canRefund = useCan('payments.refund');
   const [revision, setRevision] = useState(0);
+  const [dialog, setDialog] = useState<{ kind: 'refund' | 'reverse'; payment: Payment } | null>(
+    null,
+  );
   const payments = useResource(
     () => client.get<Page<Payment>>('/payments', { jobId: job.id, pageSize: 100 }),
     [client, job.id, revision],
@@ -86,45 +90,60 @@ export function PaymentsPanel({ job }: { job: JobDetail }) {
     }
   }
 
-  async function refund(p: Payment) {
-    const amount = window.prompt(`Refund amount (up to ${p.onAccount})`);
-    if (!amount) return;
-    const reason = window.prompt('Reason for the refund');
-    if (!reason?.trim()) return;
-    const refundMethod = p.method;
-    const reference =
-      refundMethod === 'CASH'
-        ? undefined
-        : (window.prompt('Refund transaction reference') ?? undefined);
-    try {
-      await client.post(`/payments/${p.id}/refunds`, {
-        amount: amount.trim(),
-        method: refundMethod,
-        reason: reason.trim(),
-        ...(reference ? { reference } : {}),
-      });
-      setRevision((n) => n + 1);
-    } catch (caught) {
-      setMessage(formMessage(caught));
-    }
+  async function refund(p: Payment, values: Record<string, string>) {
+    await client.post(`/payments/${p.id}/refunds`, {
+      amount: values['amount'],
+      method: p.method,
+      reason: values['reason'],
+      ...(values['reference'] ? { reference: values['reference'] } : {}),
+    });
+    setRevision((n) => n + 1);
   }
 
-  async function reverse(p: Payment) {
-    const reason = window.prompt(`Reverse ${p.receiptNumber}? This cannot be undone. Reason:`);
-    if (!reason?.trim()) return;
-    try {
-      await client.post(`/payments/${p.id}/reversal`, { reason: reason.trim() });
-      setRevision((n) => n + 1);
-    } catch (caught) {
-      setMessage(formMessage(caught));
-    }
+  async function reverse(p: Payment, values: Record<string, string>) {
+    await client.post(`/payments/${p.id}/reversal`, { reason: values['reason'] });
+    setRevision((n) => n + 1);
   }
 
   return (
     <div>
+      {dialog?.kind === 'refund' ? (
+        <FormDialog
+          title={`Refund from ${dialog.payment.receiptNumber}`}
+          description={`Up to ${dialog.payment.onAccount} can be refunded (money not settled against an invoice).`}
+          fields={[
+            { name: 'amount', label: 'Amount', required: true, inputMode: 'decimal' },
+            ...(dialog.payment.method === 'CASH'
+              ? []
+              : [
+                  {
+                    name: 'reference',
+                    label: 'Refund transaction reference',
+                    required: true,
+                    hint: 'UTR, cheque number or terminal slip — never a card number',
+                  },
+                ]),
+            { name: 'reason', label: 'Reason', type: 'textarea' as const, required: true },
+          ]}
+          submitLabel="Refund"
+          onSubmit={(v) => refund(dialog.payment, v)}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === 'reverse' ? (
+        <FormDialog
+          title={`Reverse ${dialog.payment.receiptNumber}?`}
+          description="Use this when a payment was recorded by mistake or a cheque bounced. It cannot be undone; the payment stays visible as reversed."
+          fields={[{ name: 'reason', label: 'Reason', type: 'textarea', required: true }]}
+          submitLabel="Reverse payment"
+          danger
+          onSubmit={(v) => reverse(dialog.payment, v)}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
       <p className="muted small">
-        Payments are held on the customer’s account until invoices are issued (invoicing awaits tax
-        confirmation).
+        Payments are recorded on the customer’s account and settle the job’s invoices automatically
+        once issued.
       </p>
       {message ? (
         <p role="alert" className="form-error">
@@ -181,7 +200,7 @@ export function PaymentsPanel({ job }: { job: JobDetail }) {
                           <button
                             type="button"
                             className="secondary"
-                            onClick={() => void refund(p)}
+                            onClick={() => setDialog({ kind: 'refund', payment: p })}
                           >
                             Refund
                           </button>
@@ -193,7 +212,7 @@ export function PaymentsPanel({ job }: { job: JobDetail }) {
                           <button
                             type="button"
                             className="secondary"
-                            onClick={() => void reverse(p)}
+                            onClick={() => setDialog({ kind: 'reverse', payment: p })}
                           >
                             Reverse
                           </button>

@@ -9,6 +9,7 @@ import { type FormEvent, useState } from 'react';
 import { AppShell } from '../../components/AppShell';
 import { FormField } from '../../components/FormField';
 import { RequireAuth } from '../../components/RequireAuth';
+import { SettingsNav } from '../../components/SettingsNav';
 import { ResourceView } from '../../components/ResourceView';
 import { useAuth } from '../../lib/auth';
 import { fieldErrors, formMessage, formText } from '../../lib/form-errors';
@@ -27,7 +28,8 @@ const label = (event: string) => event.replace(/_/g, ' ').toLowerCase();
 
 function NotificationSettingsPage() {
   return (
-    <AppShell title="Notification templates">
+    <AppShell title="Settings">
+      <SettingsNav />
       <NotificationSettingsForm />
     </AppShell>
   );

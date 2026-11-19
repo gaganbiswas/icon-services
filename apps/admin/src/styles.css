@@ -616,3 +616,72 @@ th.num {
     min-width: 0;
   }
 }
+
+/* Dialogs (replace browser prompt boxes) */
+.dialog {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  width: min(32rem, calc(100vw - 2rem));
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.dialog form {
+  margin: 0;
+}
+
+.dialog h2 {
+  margin: 0;
+}
+
+button.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
+fieldset.plain {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.summary.totals {
+  margin-top: 0.75rem;
+  max-width: 24rem;
+  margin-left: auto;
+}
+
+.summary.totals dd {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.subnav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.subnav a[aria-current='page'] {
+  font-weight: 700;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.35rem 1rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}

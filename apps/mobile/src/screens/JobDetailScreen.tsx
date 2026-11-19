@@ -49,7 +49,7 @@ export function JobDetailScreen({
 }) {
   const { api } = useSession();
   const [job, reload] = useLoad(
-    () => Promise.all([api.job(id), api.estimates(id), api.payments()]),
+    () => Promise.all([api.job(id), api.estimates(id), api.payments(), api.invoices()]),
     [api, id],
   );
   const [busy, setBusy] = useState(false);
@@ -80,7 +80,8 @@ export function JobDetailScreen({
         <Button label="Try again" variant="secondary" onPress={reload} />
       </Screen>
     );
-  const [j, estimates, allPayments] = job.data;
+  const [j, estimates, allPayments, allInvoices] = job.data;
+  const invoices = allInvoices.filter((i) => i.jobNumber === j.jobNumber);
   const payments = allPayments.filter((p) => p.jobNumber === j.jobNumber);
   const current = estimates.find((e) => e.status !== 'SUPERSEDED');
   return (
@@ -109,6 +110,42 @@ export function JobDetailScreen({
           {new Date(t.at).toLocaleString()} — {t.label}
           {t.message ? `: ${t.message}` : ''}
         </Body>
+      ))}
+      {invoices.length > 0 ? <Title>Tax invoices</Title> : null}
+      {invoices.map((inv) => (
+        <View key={inv.id} style={{ gap: 4 }}>
+          <Body>
+            {inv.invoiceNumber} ({inv.invoiceDate}): {formatMoney(inv.total, inv.currency)}
+            {inv.status === 'CANCELLED'
+              ? ' — cancelled'
+              : inv.balance !== '0.00'
+                ? ` — due ${formatMoney(inv.balance, inv.currency)}`
+                : ' — paid'}
+          </Body>
+          <Button
+            label={`Share invoice ${inv.invoiceNumber}`}
+            variant="secondary"
+            onPress={() =>
+              void api
+                .invoicePdf(inv.id)
+                .then((link) => sharePdf(link, 'Tax invoice'))
+                .catch((e: unknown) => setError(errorMessage(e)))
+            }
+          />
+          {inv.creditNotes.map((c) => (
+            <Button
+              key={c.id}
+              label={`Share credit note ${c.number}`}
+              variant="secondary"
+              onPress={() =>
+                void api
+                  .creditNotePdf(c.id)
+                  .then((link) => sharePdf(link, 'Credit note'))
+                  .catch((e: unknown) => setError(errorMessage(e)))
+              }
+            />
+          ))}
+        </View>
       ))}
       {payments.length > 0 ? <Title>Payments</Title> : null}
       {payments.map((p) => (

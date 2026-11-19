@@ -1,7 +1,7 @@
 # Database dictionary
 
 PostgreSQL 17 · Prisma 7 · source of truth: `packages/database/prisma/schema.prisma`
-and `packages/database/prisma/migrations/`. Updated: Phase 11 (2026-11-19).
+and `packages/database/prisma/migrations/`. Updated: Phase 7 (2026-11-19).
 
 ## Conventions
 
@@ -130,6 +130,16 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | `deliveries` | One per dispatch / hand-over; unique `(organization_id, challan_number)`; partial unique indexes: one DISPATCHED and one COMPLETED per job; CHECK: completed ⇒ recipient, relationship, proof (photo file for PHOTO_PROOF), authorization note unless SELF, balance snapshot, delivered time/by; override reason ⇔ approver; FAILED ⇒ reason. **Trigger:** completed/failed rows final, no deletes |
 | `delivery_items` | Items handed back (description, returned, condition); append-only |
 
+## Tables (Phase 7, ADR 0022)
+
+| Table | Purpose / key rules |
+|-------|---------------------|
+| `invoices` | One per tax invoice; number unique per organisation (≤ 16 chars, assigned at issue), financial year, date, supply type, place of supply, supplier/recipient JSON snapshots, totals (taxable + CGST + SGST + IGST + round-off = total), credited and allocated running totals. CHECKs: totals add up; intra-state ⇒ no IGST, inter-state ⇒ no CGST/SGST; credited + allocated ≤ total; issued ⇒ number/date/supplier present; cancelled ⇔ fully credited. One draft per job. **Trigger:** issued rows frozen except running totals/cancellation; only drafts deletable |
+| `invoice_lines` | Line values with HSN/SAC, rate and CGST/SGST/IGST snapshot; credited quantity ≤ quantity. **Trigger:** editable only while the invoice is a draft (credited quantity may only grow) |
+| `invoice_tax_summaries` | HSN/SAC × rate totals written at issue; append-only |
+| `credit_notes`, `credit_note_lines` | Corrections (partial or full) with their own numbers and immutable snapshot; append-only |
+| `payment_allocations` | Payment ↔ invoice amounts; released (reason, who, when) instead of deleted |
+
 ## Tables (Phase 11, ADR 0011)
 
 | Table | Purpose / key rules |
@@ -157,6 +167,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_phase7_invoicing` | Invoices, lines, tax summaries, credit notes, allocations; CHECKs and triggers |
 | `…_phase11_mfa` | MFA tables |
 | `…_phase10_delivery_status` | `DeliveryStatus` value `SKIPPED_NOT_CONFIGURED` |
 | `…_phase9_delivery` | Deliveries, items; constraints and triggers |

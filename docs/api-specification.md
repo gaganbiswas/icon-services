@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. JSON. Live OpenAPI document: `GET /api/docs` (and `/api/docs-json`) when
 `API_DOCS_ENABLED=true` — generated from controllers and the shared Zod contracts.
-Updated: Phase 11 (2026-11-19).
+Updated: Phase 7 (2026-11-19).
 
 ## Conventions
 
@@ -170,6 +170,27 @@ References that look like card numbers are rejected.
 
 `POST /customer/auth/otp/request` returns **503 `OTP_DELIVERY_FAILED`** when the WhatsApp provider refuses the code.
 Manual retry (`POST /notifications/:id/retry`) keeps the attempt count; after the automatic limit it grants one more attempt.
+
+## Phase 7 endpoints (GST invoicing, ADR 0021/0022)
+
+Invoices are issued only when the business profile (with GSTIN), currency and an **approved** tax configuration exist.
+
+| Method | Path | Permission | Notes |
+|--------|------|-----------|-------|
+| GET | `/invoicing/status` | `invoices.read` | `{blockers[], taxStatus}` |
+| GET / POST | `/jobs/:id/invoices` | `invoices.read` / `invoices.write` | List; create draft from the approved estimate's customer-pay lines (job must be repair-completed or later); returns the existing draft if one exists |
+| GET | `/invoices?from&to&status&branchId&page&pageSize` | `invoices.read` | Register (dates are invoice dates) |
+| GET / PUT / DELETE | `/invoices/:id` | `invoices.read` / `invoices.write` | Draft edit `{rowVersion, lines[], notes?}` recalculates GST; delete drafts only |
+| POST | `/invoices/:id/issue` | `invoices.issue` + `Idempotency-Key` | Number `INV-{FYS}-{SEQ:6}`, final GST with rates in force today, snapshots, HSN summary, automatic allocation of the job's payments, `INVOICE_ISSUED` notification. 409 `TAX_CONFIG_NOT_APPROVED` / `CONFIGURATION_REQUIRED` / `NOTHING_TO_INVOICE` |
+| POST | `/invoices/:id/pdf` | `invoices.read` | Tax invoice PDF (generated once) |
+| POST | `/invoices/:id/credit-notes` | `credit_notes.issue` + `Idempotency-Key` | `{reason, full?, lines[{invoiceLineId, quantity}]}`; full credit cancels the invoice; frees allocations beyond the new balance |
+| POST | `/credit-notes/:id/pdf` | `invoices.read` | Credit note PDF |
+| POST | `/invoices/:id/allocations` | `payments.record` | `{paymentId, amount}` from the customer's on-account money |
+| POST | `/allocations/:id/release` | `payments.refund` | `{reason}` — money returns to account (e.g. before reversing a bounced cheque) |
+| GET | `/reports/gst-summary?from&to&branchId` | `reports.read` + `invoices.read` | Invoices − credit notes; B2B/B2C, by rate, by HSN/SAC. Exports `invoices`, `gst-summary` |
+| GET | `/customer/invoices`, POST `/customer/invoices/:id/pdf`, `/customer/credit-notes/:id/pdf` | customer token | Own issued invoices only |
+
+Settings keys added: `business`, `tax`, `invoicing`, `numbering.invoiceNumber`, `numbering.creditNoteNumber`.
 
 ## Phase 11 endpoints (two-step sign-in, ADR 0011)
 

@@ -7,8 +7,8 @@ payments, delivery challan, and WhatsApp/email notifications.
 Project rules: [`CLAUDE.md`](CLAUDE.md). Decisions: [`docs/decisions/`](docs/decisions/README.md).
 Open owner questions: [`docs/owner-questions.md`](docs/owner-questions.md).
 
-> **Status:** Phases 1–6 and 8–12 built; **not live**. Production deployment is prepared and rehearsed
-> (`docs/production/README.md`); go-live waits for Phase 7 (accountant), UAT sign-off and the go-live checklist.
+> **Status:** All phases (1–12) built; **not live**. GST invoicing uses owner-approved defaults (ADR 0022) and needs
+> the accountant to approve the tax configuration in settings. Go-live waits for UAT sign-off and the go-live checklist.
 > Invoicing (Phase 7) waits for written tax confirmation from the accountant.
 
 ## Repository layout

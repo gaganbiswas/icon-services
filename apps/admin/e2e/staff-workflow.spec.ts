@@ -60,8 +60,49 @@ test('a repair goes from intake to delivery, each role using the staff panel', a
   ).json()) as { accessToken: string };
   await api.put(`${API}/settings/money`, {
     headers: { Authorization: `Bearer ${admin.accessToken}` },
-    data: { value: { currency: 'XXX' }, reason: 'E2E run' },
+    data: { value: { currency: 'INR' }, reason: 'E2E run' },
   });
+  // GST setup for the run: fictitious business + tax configuration marked as a test-only approval.
+  const auth = { Authorization: `Bearer ${admin.accessToken}` };
+  const businessSaved = await api.put(`${API}/settings/business`, {
+    headers: auth,
+    data: {
+      value: {
+        legalName: 'E2E Service Centre',
+        tradeName: null,
+        gstin: '19AAAAA0000A1ZZ',
+        address: {
+          line1: '1 Test Road',
+          line2: null,
+          city: 'Kolkata',
+          stateCode: '19',
+          postalCode: '700001',
+        },
+        phones: [],
+        emails: [],
+        website: null,
+        signatoryName: null,
+        signatoryDesignation: null,
+      },
+      reason: 'E2E run',
+    },
+  });
+  expect(businessSaved.status()).toBe(200);
+  const settings = (await (await api.get(`${API}/settings`, { headers: auth })).json()) as {
+    tax: Record<string, unknown>;
+  };
+  const taxSaved = await api.put(`${API}/settings/tax`, {
+    headers: auth,
+    data: {
+      value: {
+        ...settings.tax,
+        status: 'APPROVED',
+        approval: { approvedBy: 'E2E test only', approvedOn: '2026-11-19', note: null },
+      },
+      reason: 'E2E run',
+    },
+  });
+  expect(taxSaved.status()).toBe(200);
 
   // 1. Reception registers a new customer, device and complaint.
   await signIn(page, 'reception');
@@ -155,12 +196,20 @@ test('a repair goes from intake to delivery, each role using the staff panel', a
   await changeStatus(page, 'READY_FOR_DELIVERY', 'Your laptop is ready for collection.');
   await signOut(page);
 
-  // 6. Accounts records the payment.
+  // 6. Accounts prepares and issues the GST tax invoice, then records the payment.
   await signIn(page, 'accounts');
   await openJob(page, jobNumber);
+  await page.getByRole('tab', { name: 'Invoice' }).click();
+  await page.getByRole('button', { name: 'Prepare tax invoice' }).click();
+  await expect(page.getByRole('heading', { name: 'Draft tax invoice' })).toBeVisible();
+  await page.getByRole('button', { name: 'Issue tax invoice' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Issue invoice' }).click();
+  await expect(page.getByRole('heading', { name: /Tax invoice INV-\d{4}-000001/ })).toBeVisible();
+  // 2500 + CGST 225 + SGST 225
+  await expect(page.getByText('₹2,950.00').first()).toBeVisible();
   await page.getByRole('tab', { name: 'Payments' }).click();
   const payment = await openForm(page, 'Record payment');
-  await payment.getByLabel('Amount').fill('2500');
+  await payment.getByLabel('Amount').fill('2950');
   await payment.getByLabel('Method').selectOption('CASH');
   await payment.getByRole('button', { name: 'Record payment' }).click();
   await expect(page.getByRole('button', { name: 'Receipt' }).first()).toBeVisible();

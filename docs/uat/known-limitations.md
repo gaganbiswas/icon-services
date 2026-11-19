@@ -2,15 +2,13 @@
 
 | Area | Limitation | Why / plan |
 |------|-----------|-----------|
-| Invoicing and tax | No GST / non-GST invoices, credit notes or tax reports | Phase 7 needs written confirmation from the accountant (owner questions 14–27a) |
-| Balances | "Outstanding" and delivery balance use the approved estimate minus payments | Interim basis (ADR 0017/0019) until invoices exist |
+| Invoicing and tax | GST invoices, credit notes and the GST summary use owner-approved **defaults** (ADR 0022). Tax rates/HSN-SAC are suggestions until the accountant approves them in settings; e-invoicing (IRN/QR) and e-way bills are not generated; tax-inclusive pricing not supported | Accountant review; enable e-invoicing if turnover requires |
+| Balances | Before a job's invoice is issued, "outstanding" and the delivery balance use the approved estimate | Switches to the invoice automatically once issued (ADR 0022) |
 | Stock value | Indicative only (latest purchase cost) | Valuation method to be confirmed by the accountant |
-| Currency | Not configured (sample uses `XXX`) | Owner question 15 |
+| Currency | INR by default (configurable) | Owner question 11 |
 | WhatsApp / email | Built (Meta Cloud API, SMTP) but not live | Needs Meta business verification, approved templates, sender domain + DNS |
 | Customer sign-in | Development mock until the WhatsApp authentication template is approved | ADR 0018 |
 | Business details on documents | Placeholders (name, address, logo, terms) | Owner questions 7–13, 59 |
-| Refund / reverse / unassign / failed delivery reasons | Entered in the browser's prompt box | Replace with proper dialogs (usability) |
-| Users and roles screens | Managed through the API; no admin screens yet | Planned UI work; MFA reset is API-only |
 | Rate limits | In-memory per API process | Move to Redis before running more than one API instance |
 | Payment gateway, iOS app, partial delivery | Not in release one | Not confirmed / not enabled |
 | Hosting, backups schedule, monitoring | Scripts and runbook ready; schedule and alerts depend on the host | Phase 12 |

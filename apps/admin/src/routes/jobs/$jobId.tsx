@@ -9,6 +9,7 @@ import { StatusBadge, statusLabel } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { AssignmentsPanel } from '../../components/job/AssignmentsPanel';
 import { DeliveryPanel } from '../../components/job/DeliveryPanel';
+import { InvoicePanel } from '../../components/job/InvoicePanel';
 import { EstimatesPanel } from '../../components/job/EstimatesPanel';
 import { PartsPanel } from '../../components/job/PartsPanel';
 import { PaymentsPanel } from '../../components/job/PaymentsPanel';
@@ -56,6 +57,7 @@ export function JobDetailPage() {
   const canSeeNotifications = useCan('notifications.read');
   const canSeeEstimates = useCan('estimates.read');
   const canSeePayments = useCan('payments.read');
+  const canSeeInvoices = useCan('invoices.read');
   const canSeeDeliveries = useCan('deliveries.read');
   const notifications = useResource(
     () =>
@@ -179,6 +181,9 @@ export function JobDetailPage() {
                   </ResourceView>
                 ),
               },
+              ...(canSeeInvoices
+                ? [{ id: 'invoice', label: 'Invoice', content: <InvoicePanel job={j} /> }]
+                : []),
               ...(canSeePayments
                 ? [{ id: 'payments', label: 'Payments', content: <PaymentsPanel job={j} /> }]
                 : []),

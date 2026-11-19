@@ -19,6 +19,7 @@ export function ReportsIndex() {
   const inventory = useCan('inventory.read');
   const payments = useCan('payments.read');
   const deliveries = useCan('deliveries.read');
+  const invoices = useCan('invoices.read');
   const items = [
     reports && jobs
       ? {
@@ -62,6 +63,20 @@ export function ReportsIndex() {
           text: 'Dispatches and hand-overs with challan numbers.',
         }
       : null,
+    invoices
+      ? {
+          to: '/invoices',
+          label: 'Invoice register',
+          text: 'Tax invoices with GST, payments and balances.',
+        }
+      : null,
+    reports && invoices
+      ? {
+          to: '/reports/gst-summary',
+          label: 'GST summary',
+          text: 'Taxable value and CGST/SGST/IGST by rate and HSN/SAC, net of credit notes.',
+        }
+      : null,
   ].filter((i) => i !== null);
   return (
     <AppShell title="Reports">
@@ -76,9 +91,6 @@ export function ReportsIndex() {
           ))}
         </ul>
       )}
-      <p className="muted small">
-        Invoice and tax summaries will be added with invoicing (Phase 7).
-      </p>
     </AppShell>
   );
 }

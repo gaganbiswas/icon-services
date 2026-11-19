@@ -15,6 +15,7 @@ import { fieldErrors, formMessage, formText } from '../../lib/form-errors';
 import { newIdempotencyKey } from '../../lib/idempotency';
 import { useCan } from '../../lib/permissions';
 import { useResource } from '../../lib/use-resource';
+import { FormDialog } from '../FormDialog';
 import { FormField } from '../FormField';
 import { SelectField, TextAreaField } from '../Inputs';
 import { ResourceView } from '../ResourceView';
@@ -64,6 +65,7 @@ export function DeliveryPanel({ job, onChanged }: { job: JobDetail; onChanged: (
   const [photo, setPhoto] = useState<StoredFileInfo | null>(null);
   const [key, setKey] = useState(newIdempotencyKey);
   const [busy, setBusy] = useState(false);
+  const [failing, setFailing] = useState<string | null>(null);
   const refresh = () => {
     setRevision((n) => n + 1);
     onChanged();
@@ -102,15 +104,9 @@ export function DeliveryPanel({ job, onChanged }: { job: JobDetail; onChanged: (
     }
   }
 
-  async function failed(id: string) {
-    const reason = window.prompt('Why did the delivery fail?');
-    if (!reason?.trim()) return;
-    try {
-      await client.post(`/deliveries/${id}/failed-attempt`, { reason: reason.trim() });
-      refresh();
-    } catch (caught) {
-      setMessage(formMessage(caught));
-    }
+  async function failed(id: string, reason: string) {
+    await client.post(`/deliveries/${id}/failed-attempt`, { reason });
+    refresh();
   }
 
   async function handover(
@@ -174,11 +170,27 @@ export function DeliveryPanel({ job, onChanged }: { job: JobDetail; onChanged: (
         const money = (v: string) => (balance.currency ? formatMoney(v, balance.currency) : v);
         return (
           <div>
+            {failing ? (
+              <FormDialog
+                title="Delivery failed"
+                description="The job returns to “Ready for delivery” so it can be dispatched again."
+                fields={[
+                  { name: 'reason', label: 'What happened?', type: 'textarea', required: true },
+                ]}
+                submitLabel="Record failed attempt"
+                onSubmit={(v) => failed(failing, v['reason'] ?? '')}
+                onClose={() => setFailing(null)}
+              />
+            ) : null}
             <section className="card" aria-labelledby="balance-heading">
               <h3 id="balance-heading">Balance</h3>
               <dl className="summary">
-                <dt>Approved estimate</dt>
-                <dd>{balance.basis === 'APPROVED_ESTIMATE' ? money(balance.billed) : 'None'}</dd>
+                <dt>
+                  {balance.basis === 'INVOICE'
+                    ? 'Invoiced (after credit notes)'
+                    : 'Approved estimate'}
+                </dt>
+                <dd>{balance.basis === 'NONE' ? 'None' : money(balance.billed)}</dd>
                 <dt>Paid</dt>
                 <dd>{money(balance.paid)}</dd>
                 <dt>Due</dt>
@@ -188,7 +200,9 @@ export function DeliveryPanel({ job, onChanged }: { job: JobDetail; onChanged: (
                 </dd>
               </dl>
               <p className="muted small">
-                Interim figure from the approved estimate until invoicing is enabled.
+                {balance.basis === 'INVOICE'
+                  ? 'From the issued tax invoice(s).'
+                  : 'From the approved estimate until the tax invoice is issued.'}
               </p>
             </section>
             {message ? (
@@ -210,7 +224,7 @@ export function DeliveryPanel({ job, onChanged }: { job: JobDetail; onChanged: (
                     Print challan
                   </button>
                   {d.status === 'DISPATCHED' && canWrite ? (
-                    <button type="button" className="secondary" onClick={() => void failed(d.id)}>
+                    <button type="button" className="secondary" onClick={() => setFailing(d.id)}>
                       Delivery failed
                     </button>
                   ) : null}

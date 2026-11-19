@@ -20,17 +20,21 @@ import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$cus
 import { Route as CustomersNewRouteImport } from './routes/customers/new'
 import { Route as DeliveriesIndexRouteImport } from './routes/deliveries/index'
 import { Route as InventoryIndexRouteImport } from './routes/inventory/index'
+import { Route as InvoicesIndexRouteImport } from './routes/invoices/index'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as JobsNewRouteImport } from './routes/jobs/new'
 import { Route as NotificationsIndexRouteImport } from './routes/notifications/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports/index'
 import { Route as ReportsCollectionsRouteImport } from './routes/reports/collections'
+import { Route as ReportsGstSummaryRouteImport } from './routes/reports/gst-summary'
 import { Route as ReportsJobsRouteImport } from './routes/reports/jobs'
 import { Route as ReportsOutstandingRouteImport } from './routes/reports/outstanding'
 import { Route as ReportsPartsRouteImport } from './routes/reports/parts'
 import { Route as ReportsTechniciansRouteImport } from './routes/reports/technicians'
+import { Route as SettingsInvoicingRouteImport } from './routes/settings/invoicing'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings/notifications'
+import { Route as SettingsUsersRouteImport } from './routes/settings/users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -87,6 +91,11 @@ const InventoryIndexRoute = InventoryIndexRouteImport.update({
   path: '/inventory/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
+  id: '/invoices/',
+  path: '/invoices/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JobsIndexRoute = JobsIndexRouteImport.update({
   id: '/jobs/',
   path: '/jobs/',
@@ -117,6 +126,11 @@ const ReportsCollectionsRoute = ReportsCollectionsRouteImport.update({
   path: '/reports/collections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsGstSummaryRoute = ReportsGstSummaryRouteImport.update({
+  id: '/reports/gst-summary',
+  path: '/reports/gst-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsJobsRoute = ReportsJobsRouteImport.update({
   id: '/reports/jobs',
   path: '/reports/jobs',
@@ -137,9 +151,19 @@ const ReportsTechniciansRoute = ReportsTechniciansRouteImport.update({
   path: '/reports/technicians',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsInvoicingRoute = SettingsInvoicingRouteImport.update({
+  id: '/settings/invoicing',
+  path: '/settings/invoicing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
   id: '/settings/notifications',
   path: '/settings/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsUsersRoute = SettingsUsersRouteImport.update({
+  id: '/settings/users',
+  path: '/settings/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -155,14 +179,18 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/gst-summary': typeof ReportsGstSummaryRoute
   '/reports/jobs': typeof ReportsJobsRoute
   '/reports/outstanding': typeof ReportsOutstandingRoute
   '/reports/parts': typeof ReportsPartsRoute
   '/reports/technicians': typeof ReportsTechniciansRoute
+  '/settings/invoicing': typeof SettingsInvoicingRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/users': typeof SettingsUsersRoute
   '/customers/': typeof CustomersIndexRoute
   '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
+  '/invoices/': typeof InvoicesIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
   '/reports/': typeof ReportsIndexRoute
@@ -179,14 +207,18 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/gst-summary': typeof ReportsGstSummaryRoute
   '/reports/jobs': typeof ReportsJobsRoute
   '/reports/outstanding': typeof ReportsOutstandingRoute
   '/reports/parts': typeof ReportsPartsRoute
   '/reports/technicians': typeof ReportsTechniciansRoute
+  '/settings/invoicing': typeof SettingsInvoicingRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/users': typeof SettingsUsersRoute
   '/customers': typeof CustomersIndexRoute
   '/deliveries': typeof DeliveriesIndexRoute
   '/inventory': typeof InventoryIndexRoute
+  '/invoices': typeof InvoicesIndexRoute
   '/jobs': typeof JobsIndexRoute
   '/notifications': typeof NotificationsIndexRoute
   '/reports': typeof ReportsIndexRoute
@@ -204,14 +236,18 @@ export interface FileRoutesById {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/jobs/new': typeof JobsNewRoute
   '/reports/collections': typeof ReportsCollectionsRoute
+  '/reports/gst-summary': typeof ReportsGstSummaryRoute
   '/reports/jobs': typeof ReportsJobsRoute
   '/reports/outstanding': typeof ReportsOutstandingRoute
   '/reports/parts': typeof ReportsPartsRoute
   '/reports/technicians': typeof ReportsTechniciansRoute
+  '/settings/invoicing': typeof SettingsInvoicingRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/users': typeof SettingsUsersRoute
   '/customers/': typeof CustomersIndexRoute
   '/deliveries/': typeof DeliveriesIndexRoute
   '/inventory/': typeof InventoryIndexRoute
+  '/invoices/': typeof InvoicesIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/notifications/': typeof NotificationsIndexRoute
   '/reports/': typeof ReportsIndexRoute
@@ -230,14 +266,18 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/gst-summary'
     | '/reports/jobs'
     | '/reports/outstanding'
     | '/reports/parts'
     | '/reports/technicians'
+    | '/settings/invoicing'
     | '/settings/notifications'
+    | '/settings/users'
     | '/customers/'
     | '/deliveries/'
     | '/inventory/'
+    | '/invoices/'
     | '/jobs/'
     | '/notifications/'
     | '/reports/'
@@ -254,14 +294,18 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/gst-summary'
     | '/reports/jobs'
     | '/reports/outstanding'
     | '/reports/parts'
     | '/reports/technicians'
+    | '/settings/invoicing'
     | '/settings/notifications'
+    | '/settings/users'
     | '/customers'
     | '/deliveries'
     | '/inventory'
+    | '/invoices'
     | '/jobs'
     | '/notifications'
     | '/reports'
@@ -278,14 +322,18 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/reports/collections'
+    | '/reports/gst-summary'
     | '/reports/jobs'
     | '/reports/outstanding'
     | '/reports/parts'
     | '/reports/technicians'
+    | '/settings/invoicing'
     | '/settings/notifications'
+    | '/settings/users'
     | '/customers/'
     | '/deliveries/'
     | '/inventory/'
+    | '/invoices/'
     | '/jobs/'
     | '/notifications/'
     | '/reports/'
@@ -303,14 +351,18 @@ export interface RootRouteChildren {
   JobsJobIdRoute: typeof JobsJobIdRoute
   JobsNewRoute: typeof JobsNewRoute
   ReportsCollectionsRoute: typeof ReportsCollectionsRoute
+  ReportsGstSummaryRoute: typeof ReportsGstSummaryRoute
   ReportsJobsRoute: typeof ReportsJobsRoute
   ReportsOutstandingRoute: typeof ReportsOutstandingRoute
   ReportsPartsRoute: typeof ReportsPartsRoute
   ReportsTechniciansRoute: typeof ReportsTechniciansRoute
+  SettingsInvoicingRoute: typeof SettingsInvoicingRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsUsersRoute: typeof SettingsUsersRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
   DeliveriesIndexRoute: typeof DeliveriesIndexRoute
   InventoryIndexRoute: typeof InventoryIndexRoute
+  InvoicesIndexRoute: typeof InvoicesIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
   NotificationsIndexRoute: typeof NotificationsIndexRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -395,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InventoryIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invoices/': {
+      id: '/invoices/'
+      path: '/invoices'
+      fullPath: '/invoices/'
+      preLoaderRoute: typeof InvoicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jobs/': {
       id: '/jobs/'
       path: '/jobs'
@@ -437,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsCollectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/gst-summary': {
+      id: '/reports/gst-summary'
+      path: '/reports/gst-summary'
+      fullPath: '/reports/gst-summary'
+      preLoaderRoute: typeof ReportsGstSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/jobs': {
       id: '/reports/jobs'
       path: '/reports/jobs'
@@ -465,11 +531,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsTechniciansRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/invoicing': {
+      id: '/settings/invoicing'
+      path: '/settings/invoicing'
+      fullPath: '/settings/invoicing'
+      preLoaderRoute: typeof SettingsInvoicingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/notifications': {
       id: '/settings/notifications'
       path: '/settings/notifications'
       fullPath: '/settings/notifications'
       preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/users': {
+      id: '/settings/users'
+      path: '/settings/users'
+      fullPath: '/settings/users'
+      preLoaderRoute: typeof SettingsUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -487,14 +567,18 @@ const rootRouteChildren: RootRouteChildren = {
   JobsJobIdRoute: JobsJobIdRoute,
   JobsNewRoute: JobsNewRoute,
   ReportsCollectionsRoute: ReportsCollectionsRoute,
+  ReportsGstSummaryRoute: ReportsGstSummaryRoute,
   ReportsJobsRoute: ReportsJobsRoute,
   ReportsOutstandingRoute: ReportsOutstandingRoute,
   ReportsPartsRoute: ReportsPartsRoute,
   ReportsTechniciansRoute: ReportsTechniciansRoute,
+  SettingsInvoicingRoute: SettingsInvoicingRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsUsersRoute: SettingsUsersRoute,
   CustomersIndexRoute: CustomersIndexRoute,
   DeliveriesIndexRoute: DeliveriesIndexRoute,
   InventoryIndexRoute: InventoryIndexRoute,
+  InvoicesIndexRoute: InvoicesIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
   NotificationsIndexRoute: NotificationsIndexRoute,
   ReportsIndexRoute: ReportsIndexRoute,

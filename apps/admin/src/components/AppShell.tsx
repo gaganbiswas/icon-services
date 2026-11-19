@@ -23,6 +23,7 @@ export function AppShell({
   const canReports = useCan('reports.read');
   const canDeliveries = useCan('deliveries.read');
   const canSettings = useCan('settings.read');
+  const canInvoices = useCan('invoices.read');
   return (
     <div className="shell">
       <header className="topbar">
@@ -73,10 +74,17 @@ export function AppShell({
                 </Link>
               </li>
             ) : null}
+            {canInvoices ? (
+              <li>
+                <Link to="/invoices" activeProps={{ 'aria-current': 'page' }}>
+                  Invoices
+                </Link>
+              </li>
+            ) : null}
             {canSettings ? (
               <li>
-                <Link to="/settings/notifications" activeProps={{ 'aria-current': 'page' }}>
-                  Notification templates
+                <Link to="/settings/invoicing" activeProps={{ 'aria-current': 'page' }}>
+                  Settings
                 </Link>
               </li>
             ) : null}

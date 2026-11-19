@@ -12,6 +12,7 @@ import {
   type ErrorCode,
   type ErrorResponse,
   type StoredFileInfo,
+  type CustomerInvoice,
 } from '@icon/contracts';
 
 import type { TokenStore } from './token-store';
@@ -135,6 +136,15 @@ export class CustomerApi {
       body: { decision, termsAccepted, ...(comment ? { comment } : {}) },
     });
   payments = () => this.authorized<CustomerPayment[]>('/customer/payments', { method: 'GET' });
+  invoices = () => this.authorized<CustomerInvoice[]>('/customer/invoices', { method: 'GET' });
+  invoicePdf = (id: string) =>
+    this.authorized<DocumentLink>(`/customer/invoices/${encodeURIComponent(id)}/pdf`, {
+      method: 'POST',
+    });
+  creditNotePdf = (id: string) =>
+    this.authorized<DocumentLink>(`/customer/credit-notes/${encodeURIComponent(id)}/pdf`, {
+      method: 'POST',
+    });
   paymentReceipt = (id: string) =>
     this.authorized<DocumentLink>(`/customer/payments/${encodeURIComponent(id)}/receipt`, {
       method: 'POST',
