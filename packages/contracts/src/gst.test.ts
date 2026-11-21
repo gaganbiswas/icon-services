@@ -14,7 +14,14 @@ import {
   stateCodeFromGstin,
   stateCodeFromName,
 } from './india.js';
-import { NumberFormatSchema, SETTINGS, TaxSettingsSchema, formatNumber } from './settings.js';
+import {
+  INVOICE_TERMS_PLACEHOLDER,
+  InvoicingSettingsSchema,
+  NumberFormatSchema,
+  SETTINGS,
+  TaxSettingsSchema,
+  formatNumber,
+} from './settings.js';
 
 // Hand-computed vectors for the ADR 0022 defaults. NOT accountant-approved test vectors (owner question 27).
 describe('GST line calculation', () => {
@@ -252,5 +259,13 @@ describe('invoice settings', () => {
         lineTypeCategory: { ...t.lineTypeCategory, PART: 'MISSING' },
       }).success,
     ).toBe(false);
+  });
+
+  it('ships standard invoice terms and declaration, not placeholders (owner Q23)', () => {
+    const inv = SETTINGS.invoicing.default;
+    expect(InvoicingSettingsSchema.parse(inv)).toBeTruthy();
+    expect(inv.terms).not.toBe(INVOICE_TERMS_PLACEHOLDER);
+    expect(inv.terms).toContain('Subject to Kolkata jurisdiction.');
+    expect(inv.declaration).toMatch(/^We declare that this invoice shows the actual price/);
   });
 });

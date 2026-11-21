@@ -146,6 +146,18 @@ export const TaxSettingsSchema = z
   });
 export type TaxSettings = z.infer<typeof TaxSettingsSchema>;
 
+/** Earlier placeholder; invoices still carrying it print it marked as a placeholder. */
+export const INVOICE_TERMS_PLACEHOLDER = 'Invoice terms to be confirmed by the business.';
+export const STANDARD_INVOICE_TERMS = [
+  '1. Goods once sold will not be taken back or exchanged.',
+  "2. Warranty on replaced parts is as per the manufacturer's terms; physical, liquid or burn damage is not covered.",
+  '3. Payment is due on delivery unless agreed otherwise in writing.',
+  '4. Subject to Kolkata jurisdiction.',
+  'E. & O.E.',
+].join('\n');
+export const STANDARD_INVOICE_DECLARATION =
+  'We declare that this invoice shows the actual price of the goods and services described and that all particulars are true and correct.';
+
 export const InvoicingSettingsSchema = z.object({
   financialYearStartMonth: z.number().int().min(1).max(12),
   /** Printed on every invoice (PLACEHOLDER until supplied). */
@@ -339,8 +351,9 @@ export const SETTINGS = {
     schema: InvoicingSettingsSchema,
     default: {
       financialYearStartMonth: 4,
-      terms: 'Invoice terms to be confirmed by the business.',
-      declaration: null,
+      // Standard terms and declaration (owner Q23, 2026-11-21, ADR 0024) — editable in settings.
+      terms: STANDARD_INVOICE_TERMS,
+      declaration: STANDARD_INVOICE_DECLARATION,
     } as InvoicingSettings,
   },
   delivery: {

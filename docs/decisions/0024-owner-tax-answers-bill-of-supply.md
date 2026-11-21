@@ -23,13 +23,13 @@
 | 20 | Yes | Total rounded to the nearest rupee with a "Round off" line |
 | 21 | No | No e-invoice (IRN/QR), no e-way bill |
 | 22 | No | No reverse charge ("Reverse charge: No") |
+| 23 | Normal terms; signatory "For Icon Infosys" | Default terms: no returns/exchange, warranty on parts per manufacturer (physical/liquid/burn damage excluded), payment due on delivery, subject to Kolkata jurisdiction, E. & O.E.; standard declaration ("actual price … true and correct"); signature block "For ICON INFOSYS / Authorised Signatory" (no personal name). All editable in Settings → Business and invoicing |
 | 24 | MT/<number>, restart each April (confirmed) | Tax invoices `MT/{FYS}/{SEQ:1}` → `MT/2627/1`; Bill of Supply `BS/2627/1`; credit notes `CN/2627/1` (both chosen to match; changeable in settings) |
 | 25 | Yes | Credit-note correction/cancellation process as built |
 | 26 | Zero-value invoice | Warranty/no-charge jobs get an invoice; warranty and goodwill lines are listed at ₹0 |
 | 27 | No | No accountant sample invoices; tests use our worked examples |
 | 27a | No | No GST receipt voucher; payment receipts print no tax footer (empty by default) |
 
-Not answered: 23 (invoice terms, declaration, signatory) — stays a setting with placeholder text.
 
 ## Bill of Supply
 
@@ -55,4 +55,4 @@ Not answered: 23 (invoice terms, declaration, signatory) — stays a setting wit
 ## Still required before production
 
 The tax configuration stays **unapproved until someone records the approval** in Settings → Business and
-invoicing (who and when). HSN/SAC codes and invoice wording (Q23) remain open.
+invoicing (who and when). HSN/SAC codes remain open.

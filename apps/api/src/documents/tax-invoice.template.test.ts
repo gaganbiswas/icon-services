@@ -146,4 +146,18 @@ describe('tax invoice template', () => {
     expect(html).not.toContain('CGST');
     expect(html).toContain('Credit total');
   });
+
+  it('signs as "For ICON INFOSYS — Authorised Signatory" when no signatory name is set', () => {
+    const html = renderTaxDocumentHtml({
+      ...base,
+      supplier: { ...base.supplier, name: 'ICON INFOSYS' },
+      signatory: { name: null, designation: null },
+      declaration: 'We declare that this invoice shows the actual price.',
+      termsArePlaceholder: false,
+    });
+    expect(html).toContain('<div>For ICON INFOSYS</div>');
+    expect(html).toContain('Authorised Signatory');
+    expect(html).toContain('We declare that this invoice shows the actual price.');
+    expect(html).not.toContain('terms small placeholder');
+  });
 });

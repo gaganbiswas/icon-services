@@ -1,6 +1,6 @@
 # 0022 — GST invoicing with owner-approved defaults (Phase 7)
 
-- **Status:** Approved by owner ("keep the other answers as defaults and finish everything", 2026-11-19). Owner answers in ADR 0024 replace rows 11–13, 17–22, 24–27a (numbering now MT/2627/1; warranty jobs get zero-value invoices; no receipt footer).
+- **Status:** Approved by owner ("keep the other answers as defaults and finish everything", 2026-11-19). Owner answers in ADR 0024 replace rows 11–13, 17–27a (numbering now MT/2627/1; standard terms and declaration; warranty jobs get zero-value invoices; no receipt footer).
   Every default below is a **setting**, not code, and must be reviewed by the accountant before production billing.
 - **Date:** 2026-11-19
 

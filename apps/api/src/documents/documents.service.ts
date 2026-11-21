@@ -10,6 +10,7 @@ import {
   formatMoney,
   stateName,
   summarizeByHsn,
+  INVOICE_TERMS_PLACEHOLDER,
 } from '@icon/contracts';
 import { Prisma, type PrismaClient } from '@icon/database';
 
@@ -506,7 +507,7 @@ export class DocumentsService {
       },
       amountInWords: amountInWordsINR(m2(invoice.total)),
       terms: invoice.terms,
-      termsArePlaceholder: invoice.terms === SETTINGS.invoicing.default.terms,
+      termsArePlaceholder: invoice.terms === INVOICE_TERMS_PLACEHOLDER,
       declaration: invoicing.declaration,
       signatory: {
         name: business?.signatoryName ?? null,

@@ -75,7 +75,7 @@ Owner-confirmed values to enter (ADR 0021/0024) in **Settings → Business and i
 | Financial year | April |
 | Number formats (defaults) | `MT/{FYS}/{SEQ:1}`, Bill of supply `BS/{FYS}/{SEQ:1}`, credit note `CN/{FYS}/{SEQ:1}` |
 | GST | 18 % (services and parts); confirm HSN/SAC codes, then record the approval (who, when) |
-| Invoice terms, declaration, signatory | Still to be supplied by the owner (question 23) |
+| Invoice terms, declaration, signatory | Standard defaults (ADR 0024 Q23); leave signatory name empty so invoices sign "For ICON INFOSYS — Authorised Signatory" |
 
 ## 5. Updates
 

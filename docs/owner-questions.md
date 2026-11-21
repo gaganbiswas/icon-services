@@ -47,7 +47,7 @@ Answered by the owner on 2026-11-21 (ADR 0024).
 20. Rounding. **Yes — total rounded to the nearest rupee, shown as a "Round off" line.**
 21. E-invoicing / e-way bill. **No.**
 22. Reverse charge. **No.**
-23. Mandatory wording, terms, declaration, signatory. _answer_ (placeholders in settings.)
+23. Mandatory wording, terms, declaration, signatory. **Normal terms and declaration; signature "For ICON INFOSYS — Authorised Signatory"** (2026-11-21). Standard wording in use (editable in settings): no returns/exchange of goods sold, warranty on parts as per manufacturer, payment due on delivery, subject to Kolkata jurisdiction, E. & O.E.; declaration "We declare that this invoice shows the actual price of the goods and services described and that all particulars are true and correct."
 24. Invoice numbering. **MT/<number>, restarting each April with the year: `MT/2627/1`.** Bill of Supply `BS/2627/1`, credit notes `CN/2627/1` (chosen to match; changeable).
 25. Credit-note / cancellation process. **Yes — as built** (credit note for some lines or the whole invoice, with reason, audited).
 26. Warranty / zero-charge jobs. **Zero-value invoice** (warranty lines listed at ₹0).
