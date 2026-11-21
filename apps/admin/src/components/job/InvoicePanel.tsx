@@ -1,7 +1,9 @@
 import {
   type DocumentLink,
   ESTIMATE_LINE_TYPES,
+  INVOICE_DOCUMENT_LABELS,
   type Invoice,
+  type InvoiceDocumentType,
   type InvoiceLineInput,
   type JobDetail,
   formatMoney,
@@ -119,11 +121,12 @@ export function InvoicePanel({ job }: { job: JobDetail }) {
 function Totals({ invoice }: { invoice: Invoice }) {
   const m = (v: string) => formatMoney(v, invoice.currency);
   const intra = invoice.supplyType === 'INTRA_STATE';
+  const gst = invoice.documentType === 'TAX_INVOICE';
   return (
     <dl className="summary totals">
-      <dt>Taxable value</dt>
+      <dt>{gst ? 'Taxable value' : 'Value (no GST)'}</dt>
       <dd>{m(invoice.taxableTotal)}</dd>
-      {intra ? (
+      {!gst ? null : intra ? (
         <>
           <dt>CGST</dt>
           <dd>{m(invoice.cgstTotal)}</dd>
@@ -154,6 +157,7 @@ function LinesTable({ invoice, editable }: { invoice: Invoice; editable?: false 
   void editable;
   const m = (v: string) => formatMoney(v, invoice.currency);
   const intra = invoice.supplyType === 'INTRA_STATE';
+  const gst = invoice.documentType === 'TAX_INVOICE';
   return (
     <div className="table-wrap">
       <table className="data">
@@ -165,12 +169,14 @@ function LinesTable({ invoice, editable }: { invoice: Invoice; editable?: false 
               Qty
             </th>
             <th scope="col" className="num">
-              Taxable
+              {gst ? 'Taxable' : 'Value'}
             </th>
-            <th scope="col" className="num">
-              GST
-            </th>
-            {intra ? (
+            {!gst ? null : (
+              <th scope="col" className="num">
+                GST
+              </th>
+            )}
+            {!gst ? null : intra ? (
               <>
                 <th scope="col" className="num">
                   CGST
@@ -203,8 +209,8 @@ function LinesTable({ invoice, editable }: { invoice: Invoice; editable?: false 
                 {l.quantity} {l.unit}
               </td>
               <td className="num">{m(l.taxableValue)}</td>
-              <td className="num">{l.gstRate}%</td>
-              {intra ? (
+              {!gst ? null : <td className="num">{l.gstRate}%</td>}
+              {!gst ? null : intra ? (
                 <>
                   <td className="num">{m(l.cgstAmount)}</td>
                   <td className="num">{m(l.sgstAmount)}</td>
@@ -240,7 +246,13 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [issueKey] = useState(newIdempotencyKey);
-  const dirty = JSON.stringify(lines) !== JSON.stringify(invoice.lines.map(toInput));
+  const [docType, setDocType] = useState<InvoiceDocumentType>(invoice.documentType);
+  const [docReason, setDocReason] = useState(invoice.documentTypeReason ?? '');
+  const dirty =
+    JSON.stringify(lines) !== JSON.stringify(invoice.lines.map(toInput)) ||
+    docType !== invoice.documentType ||
+    (docType === 'BILL_OF_SUPPLY' && docReason.trim() !== (invoice.documentTypeReason ?? ''));
+  const label = INVOICE_DOCUMENT_LABELS[invoice.documentType].toLowerCase();
   const update = (i: number, patch: Partial<InvoiceLineInput>) =>
     setLines((all) => all.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
@@ -248,7 +260,12 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
     setSaving(true);
     setMessage(null);
     try {
-      await client.put(`/invoices/${invoice.id}`, { rowVersion: invoice.rowVersion, lines });
+      await client.put(`/invoices/${invoice.id}`, {
+        rowVersion: invoice.rowVersion,
+        lines,
+        documentType: docType,
+        documentTypeReason: docType === 'BILL_OF_SUPPLY' ? docReason.trim() || null : null,
+      });
       onChanged();
     } catch (caught) {
       setMessage(formMessage(caught));
@@ -259,13 +276,50 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
 
   return (
     <section className="card" aria-labelledby={`draft-${invoice.id}`}>
-      <h3 id={`draft-${invoice.id}`}>Draft tax invoice</h3>
+      <h3 id={`draft-${invoice.id}`}>Draft {label}</h3>
       <p className="muted small">
         Bill to {invoice.recipient.name}
         {invoice.recipient.gstin ? ` · GSTIN ${invoice.recipient.gstin}` : ' · unregistered'} ·
         Place of supply {invoice.placeOfSupply.name} ({invoice.placeOfSupply.code}) ·{' '}
-        {invoice.supplyType === 'INTRA_STATE' ? 'CGST + SGST' : 'IGST'}
+        {invoice.documentType === 'BILL_OF_SUPPLY'
+          ? 'no GST'
+          : invoice.supplyType === 'INTRA_STATE'
+            ? 'CGST + SGST'
+            : 'IGST'}
       </p>
+      {canWrite ? (
+        <fieldset className="plain">
+          <legend>Document type</legend>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={`doc-type-${invoice.id}`}
+              checked={docType === 'TAX_INVOICE'}
+              onChange={() => setDocType('TAX_INVOICE')}
+            />{' '}
+            Tax invoice (GST charged)
+          </label>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={`doc-type-${invoice.id}`}
+              checked={docType === 'BILL_OF_SUPPLY'}
+              onChange={() => setDocType('BILL_OF_SUPPLY')}
+            />{' '}
+            Bill of supply (no GST)
+          </label>
+          {docType === 'BILL_OF_SUPPLY' ? (
+            <label>
+              Why no GST is charged (required, kept on record)
+              <textarea
+                value={docReason}
+                maxLength={500}
+                onChange={(e) => setDocReason(e.target.value)}
+              />
+            </label>
+          ) : null}
+        </fieldset>
+      ) : null}
       {invoice.blockers.length > 0 ? (
         <div className="warning" role="status">
           <p>This invoice cannot be issued yet:</p>
@@ -387,13 +441,21 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
           >
             Add line
           </button>
-          <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={
+              saving || !dirty || (docType === 'BILL_OF_SUPPLY' && docReason.trim().length < 3)
+            }
+          >
             {saving ? 'Saving…' : 'Save and recalculate'}
           </button>
         </div>
       ) : null}
       <Totals invoice={invoice} />
-      {dirty ? <p className="muted small">Save to recalculate GST for your changes.</p> : null}
+      {dirty ? (
+        <p className="muted small">Save to recalculate the totals for your changes.</p>
+      ) : null}
       {message ? (
         <p role="alert" className="form-error">
           {message}
@@ -406,7 +468,7 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
             onClick={() => setConfirming(true)}
             disabled={dirty || invoice.blockers.length > 0 || invoice.lines.length === 0}
           >
-            Issue tax invoice
+            Issue {label}
           </button>
         ) : null}
         {canWrite ? (
@@ -417,8 +479,8 @@ function DraftEditor({ invoice, onChanged }: { invoice: Invoice; onChanged: () =
       </div>
       {confirming ? (
         <FormDialog
-          title="Issue this tax invoice?"
-          description={`It gets the next invoice number and today's date. Total ${formatMoney(invoice.total, invoice.currency)}. Issued invoices can never be edited — corrections need a credit note.`}
+          title={`Issue this ${label}?`}
+          description={`It gets the next ${label} number and today's date. Total ${formatMoney(invoice.total, invoice.currency)}${invoice.total === '0.00' ? ' (zero-value bill)' : ''}. It can never be edited afterwards — corrections need a credit note.`}
           fields={[]}
           submitLabel="Issue invoice"
           onSubmit={async () => {
@@ -476,7 +538,7 @@ function IssuedInvoice({ invoice, onChanged }: { invoice: Invoice; onChanged: ()
     <section className="card" aria-labelledby={`inv-${invoice.id}`}>
       <div className="page-header">
         <h3 id={`inv-${invoice.id}`}>
-          Tax invoice {invoice.invoiceNumber}{' '}
+          {INVOICE_DOCUMENT_LABELS[invoice.documentType]} {invoice.invoiceNumber}{' '}
           <span className="badge">
             {invoice.status === 'CANCELLED'
               ? 'Cancelled'

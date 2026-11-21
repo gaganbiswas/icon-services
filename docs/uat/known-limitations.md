@@ -2,7 +2,7 @@
 
 | Area | Limitation | Why / plan |
 |------|-----------|-----------|
-| Invoicing and tax | GST invoices, credit notes and the GST summary use owner-approved **defaults** (ADR 0022). Tax rates/HSN-SAC are suggestions until the accountant approves them in settings; e-invoicing (IRN/QR) and e-way bills are not generated; tax-inclusive pricing not supported | Accountant review; enable e-invoicing if turnover requires |
+| Invoicing and tax | Owner's answers applied (ADR 0024). HSN/SAC codes are still suggestions and the tax configuration must be approved in settings before issuing; e-invoicing and e-way bills are not generated (owner: not applicable); tax-inclusive pricing not supported (owner: not needed). The system does not decide when a Bill of Supply is legally correct | Accountant to confirm HSN/SAC and Bill of Supply cases; owner to supply invoice terms (Q23) |
 | Customer web portal | Tracking, estimate decisions and documents only; new complaints are raised in the Android app or at reception | ADR 0023; add a web complaint form if wanted |
 | Balances | Before a job's invoice is issued, "outstanding" and the delivery balance use the approved estimate | Switches to the invoice automatically once issued (ADR 0022) |
 | Stock value | Indicative only (latest purchase cost) | Valuation method to be confirmed by the accountant |

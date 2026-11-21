@@ -1482,6 +1482,14 @@ enum InvoiceStatus {
   @@map("invoice_status")
 }
 
+/// GST tax invoice, or Bill of Supply (no GST) chosen per invoice with a reason (ADR 0024).
+enum InvoiceDocumentType {
+  TAX_INVOICE
+  BILL_OF_SUPPLY
+
+  @@map("invoice_document_type")
+}
+
 enum SupplyType {
   INTRA_STATE
   INTER_STATE
@@ -1490,42 +1498,44 @@ enum SupplyType {
 }
 
 model Invoice {
-  id                String        @id @default(uuid(7)) @db.Uuid
-  organizationId    String        @map("organization_id") @db.Uuid
-  branchId          String        @map("branch_id") @db.Uuid
-  jobId             String        @map("job_id") @db.Uuid
-  customerId        String        @map("customer_id") @db.Uuid
-  sourceEstimateId  String?       @map("source_estimate_id") @db.Uuid
-  status            InvoiceStatus @default(DRAFT)
+  id                 String              @id @default(uuid(7)) @db.Uuid
+  organizationId     String              @map("organization_id") @db.Uuid
+  branchId           String              @map("branch_id") @db.Uuid
+  jobId              String              @map("job_id") @db.Uuid
+  customerId         String              @map("customer_id") @db.Uuid
+  sourceEstimateId   String?             @map("source_estimate_id") @db.Uuid
+  status             InvoiceStatus       @default(DRAFT)
+  documentType       InvoiceDocumentType @default(TAX_INVOICE) @map("document_type")
+  documentTypeReason String?             @map("document_type_reason") @db.VarChar(500)
   /// Assigned at issue: unique per organisation, ≤ 16 characters (GST).
-  invoiceNumber     String?       @map("invoice_number") @db.VarChar(16)
-  financialYear     String?       @map("financial_year") @db.VarChar(9)
-  invoiceDate       DateTime?     @map("invoice_date") @db.Date
-  currency          String        @db.Char(3)
-  supplyType        SupplyType    @map("supply_type")
-  placeOfSupplyCode String        @map("place_of_supply_code") @db.Char(2)
-  reverseCharge     Boolean       @default(false) @map("reverse_charge")
+  invoiceNumber      String?             @map("invoice_number") @db.VarChar(16)
+  financialYear      String?             @map("financial_year") @db.VarChar(9)
+  invoiceDate        DateTime?           @map("invoice_date") @db.Date
+  currency           String              @db.Char(3)
+  supplyType         SupplyType          @map("supply_type")
+  placeOfSupplyCode  String              @map("place_of_supply_code") @db.Char(2)
+  reverseCharge      Boolean             @default(false) @map("reverse_charge")
   /// Immutable snapshots taken at issue (supplier) / kept current while draft (recipient).
-  supplier          Json?
-  recipient         Json
-  taxableTotal      Decimal       @default(0) @map("taxable_total") @db.Decimal(19, 4)
-  cgstTotal         Decimal       @default(0) @map("cgst_total") @db.Decimal(19, 4)
-  sgstTotal         Decimal       @default(0) @map("sgst_total") @db.Decimal(19, 4)
-  igstTotal         Decimal       @default(0) @map("igst_total") @db.Decimal(19, 4)
-  taxTotal          Decimal       @default(0) @map("tax_total") @db.Decimal(19, 4)
-  roundOff          Decimal       @default(0) @map("round_off") @db.Decimal(19, 4)
-  total             Decimal       @default(0) @db.Decimal(19, 4)
-  creditedTotal     Decimal       @default(0) @map("credited_total") @db.Decimal(19, 4)
-  allocatedTotal    Decimal       @default(0) @map("allocated_total") @db.Decimal(19, 4)
-  notes             String?       @db.VarChar(1000)
-  terms             String?       @db.VarChar(2000)
-  rowVersion        Int           @default(1) @map("row_version")
-  createdById       String        @map("created_by_id") @db.Uuid
-  issuedAt          DateTime?     @map("issued_at") @db.Timestamptz(3)
-  issuedById        String?       @map("issued_by_id") @db.Uuid
-  cancelledAt       DateTime?     @map("cancelled_at") @db.Timestamptz(3)
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  supplier           Json?
+  recipient          Json
+  taxableTotal       Decimal             @default(0) @map("taxable_total") @db.Decimal(19, 4)
+  cgstTotal          Decimal             @default(0) @map("cgst_total") @db.Decimal(19, 4)
+  sgstTotal          Decimal             @default(0) @map("sgst_total") @db.Decimal(19, 4)
+  igstTotal          Decimal             @default(0) @map("igst_total") @db.Decimal(19, 4)
+  taxTotal           Decimal             @default(0) @map("tax_total") @db.Decimal(19, 4)
+  roundOff           Decimal             @default(0) @map("round_off") @db.Decimal(19, 4)
+  total              Decimal             @default(0) @db.Decimal(19, 4)
+  creditedTotal      Decimal             @default(0) @map("credited_total") @db.Decimal(19, 4)
+  allocatedTotal     Decimal             @default(0) @map("allocated_total") @db.Decimal(19, 4)
+  notes              String?             @db.VarChar(1000)
+  terms              String?             @db.VarChar(2000)
+  rowVersion         Int                 @default(1) @map("row_version")
+  createdById        String              @map("created_by_id") @db.Uuid
+  issuedAt           DateTime?           @map("issued_at") @db.Timestamptz(3)
+  issuedById         String?             @map("issued_by_id") @db.Uuid
+  cancelledAt        DateTime?           @map("cancelled_at") @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   job          ServiceJob          @relation(fields: [jobId], references: [id], onDelete: Restrict)
   lines        InvoiceLine[]

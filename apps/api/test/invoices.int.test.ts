@@ -45,6 +45,8 @@ interface InvoiceBody {
   paidTotal: string;
   balance: string;
   paymentState: string;
+  documentType: string;
+  documentTypeReason: string | null;
   amountInWords: string;
   blockers: string[];
   rowVersion: number;
@@ -243,10 +245,11 @@ describe('GST invoicing (real PostgreSQL)', () => {
       await http().post(`/api/v1/jobs/${job.jobId}/invoices`).set(as('accounts')).expect(201)
     ).body as InvoiceBody;
     expect(draft.status).toBe('DRAFT');
-    expect(draft.lines.map((l) => [l.description, l.hsnSac, l.gstRate])).toEqual([
-      ['Keyboard', '8473', '18'],
-      ['Fitting', '998713', '18'],
-    ]); // warranty line not charged
+    expect(draft.lines.map((l) => [l.description, l.hsnSac, l.gstRate, l.taxableValue])).toEqual([
+      ['Keyboard', '8473', '18', '2500.00'],
+      ['Fitting', '998713', '18', '600.00'],
+      ['Screws (warranty) (covered by warranty)', '8473', '18', '0.00'],
+    ]); // warranty line listed at zero value (owner Q26)
     expect(draft.blockers).toEqual([
       'The tax configuration has not been approved yet (settings → tax).',
     ]);
@@ -273,7 +276,7 @@ describe('GST invoicing (real PostgreSQL)', () => {
     const issued = (await issue(draft.id, key).expect(200)).body as InvoiceBody;
     expect(issued).toMatchObject({
       status: 'ISSUED',
-      invoiceNumber: `INV-${fyShort}-000001`,
+      invoiceNumber: `MT/${fyShort}/1`,
       supplyType: 'INTRA_STATE',
       placeOfSupply: { code: '19', name: 'West Bengal' },
       taxableTotal: '3100.00',
@@ -399,7 +402,7 @@ describe('GST invoicing (real PostgreSQL)', () => {
       {
         hsnSac: '8473',
         gstRate: '18',
-        quantity: '1',
+        quantity: '5', // keyboard + 4 warranty screws at zero value
         taxable: '2500.00',
         cgst: '0.00',
         sgst: '0.00',
@@ -446,7 +449,7 @@ describe('GST invoicing (real PostgreSQL)', () => {
       paymentState: 'PAID',
     });
     expect(partial.creditNotes).toEqual([
-      expect.objectContaining({ number: `CN-${fyShort}-000001`, total: '708.00' }),
+      expect.objectContaining({ number: `CN/${fyShort}/1`, total: '708.00' }),
     ]);
     // The freed 708 is refundable.
     await http()
@@ -516,7 +519,7 @@ describe('GST invoicing (real PostgreSQL)', () => {
       await http().post(`/api/v1/jobs/${other.jobId}/invoices`).set(as('accounts')).expect(201)
     ).body as InvoiceBody;
     const second = (await issue(otherDraft.id).expect(200)).body as InvoiceBody;
-    expect(second.invoiceNumber).toBe(`INV-${fyShort}-000002`);
+    expect(second.invoiceNumber).toBe(`MT/${fyShort}/2`);
     await http().get(`/api/v1/invoices/${draft.id}`).set(as('accountsA2')).expect(404);
     expect(
       (
@@ -602,5 +605,171 @@ describe('GST invoicing (real PostgreSQL)', () => {
     expect((stale.body as ErrorBody).error.code).toBe('VERSION_CONFLICT');
     await http().delete(`/api/v1/invoices/${draft.id}`).set(as('accounts')).expect(204);
     expect(await t.prisma.invoice.count()).toBe(0);
+  });
+
+  it('issues a Bill of Supply (no GST) in its own series, with a reason, kept out of GST figures', async () => {
+    await configure();
+    const job = await finishedJob();
+    const draft = (
+      await http().post(`/api/v1/jobs/${job.jobId}/invoices`).set(as('accounts')).expect(201)
+    ).body as InvoiceBody;
+    const lines = draft.lines.map((l) => ({
+      lineType: 'PART',
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.taxableValue,
+    }));
+    const noReason = await http()
+      .put(`/api/v1/invoices/${draft.id}`)
+      .set(as('accounts'))
+      .send({ rowVersion: draft.rowVersion, lines, documentType: 'BILL_OF_SUPPLY' })
+      .expect(400);
+    expect((noReason.body as ErrorBody).error.code).toBe('VALIDATION_FAILED');
+    const bos = (
+      await http()
+        .put(`/api/v1/invoices/${draft.id}`)
+        .set(as('accounts'))
+        .send({
+          rowVersion: draft.rowVersion,
+          lines,
+          documentType: 'BILL_OF_SUPPLY',
+          documentTypeReason: 'Exempt supply as advised by the accountant',
+        })
+        .expect(200)
+    ).body as InvoiceBody;
+    expect(bos).toMatchObject({
+      documentType: 'BILL_OF_SUPPLY',
+      documentTypeReason: 'Exempt supply as advised by the accountant',
+      taxableTotal: '3100.00',
+      cgstTotal: '0.00',
+      sgstTotal: '0.00',
+      igstTotal: '0.00',
+      total: '3100.00',
+    });
+    expect(bos.lines.every((l) => l.gstRate === '0')).toBe(true);
+    expect(bos.lines[0]?.hsnSac).toBe('8473');
+    expect(
+      await t.prisma.auditLog.count({
+        where: {
+          action: 'invoice.draft_updated',
+          entityId: draft.id,
+          reason: 'Exempt supply as advised by the accountant',
+        },
+      }),
+    ).toBe(1);
+    // The database itself refuses a Bill of Supply that carries tax.
+    await expect(
+      t.prisma
+        .$executeRaw`UPDATE invoices SET cgst_total = 1, sgst_total = 1, tax_total = 2, total = total + 2 WHERE id = ${draft.id}::uuid`,
+    ).rejects.toThrow(/invoices_bill_of_supply_no_tax/);
+
+    const issued = (await issue(draft.id).expect(200)).body as InvoiceBody;
+    expect(issued).toMatchObject({
+      invoiceNumber: `BS/${fyShort}/1`,
+      documentType: 'BILL_OF_SUPPLY',
+      total: '3100.00',
+    });
+    await expect(
+      t.prisma.invoice.update({ where: { id: draft.id }, data: { documentType: 'TAX_INVOICE' } }),
+    ).rejects.toThrow(/cannot change/);
+    await http().post(`/api/v1/invoices/${draft.id}/pdf`).set(as('accounts')).expect(201);
+    expect(
+      await t.prisma.document.count({
+        where: { entityId: draft.id, documentType: 'BILL_OF_SUPPLY' },
+      }),
+    ).toBe(1);
+
+    // A tax invoice keeps its own series.
+    const other = await finishedJob();
+    const taxDraft = (
+      await http().post(`/api/v1/jobs/${other.jobId}/invoices`).set(as('accounts')).expect(201)
+    ).body as InvoiceBody;
+    expect(((await issue(taxDraft.id).expect(200)).body as InvoiceBody).invoiceNumber).toBe(
+      `MT/${fyShort}/1`,
+    );
+
+    const summary = (
+      await http()
+        .get('/api/v1/reports/gst-summary?from=2000-01-01&to=2100-01-01')
+        .set(as('accounts'))
+        .expect(200)
+    ).body as {
+      invoices: { count: number; taxable: string; total: string };
+      billsOfSupply: { count: number; total: string; credited: string };
+      byRate: { gstRate: string }[];
+    };
+    expect(summary.invoices).toMatchObject({ count: 1, taxable: '3100.00', total: '3658.00' });
+    expect(summary.billsOfSupply).toEqual({ count: 1, total: '3100.00', credited: '0.00' });
+    expect(summary.byRate.map((r) => r.gstRate)).toEqual(['18']);
+
+    // Credit note against a Bill of Supply carries no tax and is reported with it.
+    await http()
+      .post(`/api/v1/invoices/${draft.id}/credit-notes`)
+      .set(as('accounts'))
+      .set('Idempotency-Key', newKey())
+      .send({ reason: 'Returned', full: true })
+      .expect(201);
+    const after = (
+      await http()
+        .get('/api/v1/reports/gst-summary?from=2000-01-01&to=2100-01-01')
+        .set(as('accounts'))
+        .expect(200)
+    ).body as typeof summary & { creditNotes: { count: number } };
+    expect(after.creditNotes.count).toBe(0);
+    expect(after.billsOfSupply.credited).toBe('3100.00');
+  });
+
+  it('issues a zero-value invoice for a warranty job and cancels it only as a whole', async () => {
+    await configure();
+    const job = await finishedJob();
+    const draft = (
+      await http().post(`/api/v1/jobs/${job.jobId}/invoices`).set(as('accounts')).expect(201)
+    ).body as InvoiceBody;
+    const zero = (
+      await http()
+        .put(`/api/v1/invoices/${draft.id}`)
+        .set(as('accounts'))
+        .send({
+          rowVersion: draft.rowVersion,
+          lines: [
+            {
+              lineType: 'PART',
+              description: 'Keyboard (covered by warranty)',
+              quantity: '2',
+              unitPrice: '0',
+            },
+          ],
+        })
+        .expect(200)
+    ).body as InvoiceBody;
+    const issued = (await issue(zero.id).expect(200)).body as InvoiceBody;
+    expect(issued).toMatchObject({
+      status: 'ISSUED',
+      invoiceNumber: `MT/${fyShort}/1`,
+      total: '0.00',
+      balance: '0.00',
+      paymentState: 'PAID',
+      amountInWords: expect.stringMatching(/zero/i) as unknown,
+    });
+    const line = issued.lines[0];
+    const partial = await http()
+      .post(`/api/v1/invoices/${zero.id}/credit-notes`)
+      .set(as('accounts'))
+      .set('Idempotency-Key', newKey())
+      .send({ reason: 'One returned', lines: [{ invoiceLineId: line?.id, quantity: '1' }] })
+      .expect(409);
+    expect((partial.body as ErrorBody).error.code).toBe('CREDIT_EXCEEDS_INVOICE');
+    const cancelled = (
+      await http()
+        .post(`/api/v1/invoices/${zero.id}/credit-notes`)
+        .set(as('accounts'))
+        .set('Idempotency-Key', newKey())
+        .send({ reason: 'Issued to the wrong customer', full: true })
+        .expect(201)
+    ).body as InvoiceBody;
+    expect(cancelled).toMatchObject({ status: 'CANCELLED', paymentState: 'CREDITED' });
+    expect(cancelled.creditNotes).toEqual([
+      expect.objectContaining({ number: `CN/${fyShort}/1`, total: '0.00' }),
+    ]);
   });
 });

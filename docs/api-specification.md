@@ -188,8 +188,8 @@ Invoices are issued only when the business profile (with GSTIN), currency and an
 | GET | `/invoicing/status` | `invoices.read` | `{blockers[], taxStatus}` |
 | GET / POST | `/jobs/:id/invoices` | `invoices.read` / `invoices.write` | List; create draft from the approved estimate's customer-pay lines (job must be repair-completed or later); returns the existing draft if one exists |
 | GET | `/invoices?from&to&status&branchId&page&pageSize` | `invoices.read` | Register (dates are invoice dates) |
-| GET / PUT / DELETE | `/invoices/:id` | `invoices.read` / `invoices.write` | Draft edit `{rowVersion, lines[], notes?}` recalculates GST; delete drafts only |
-| POST | `/invoices/:id/issue` | `invoices.issue` + `Idempotency-Key` | Number `INV-{FYS}-{SEQ:6}`, final GST with rates in force today, snapshots, HSN summary, automatic allocation of the job's payments, `INVOICE_ISSUED` notification. 409 `TAX_CONFIG_NOT_APPROVED` / `CONFIGURATION_REQUIRED` / `NOTHING_TO_INVOICE` |
+| GET / PUT / DELETE | `/invoices/:id` | `invoices.read` / `invoices.write` | Draft edit `{rowVersion, lines[], notes?, documentType?: TAX_INVOICE\|BILL_OF_SUPPLY, documentTypeReason?}` (reason required for a Bill of Supply) recalculates; delete drafts only |
+| POST | `/invoices/:id/issue` | `invoices.issue` + `Idempotency-Key` | Number `MT/{FYS}/{SEQ:1}` (tax invoice) or `BS/{FYS}/{SEQ:1}` (Bill of Supply), final GST with rates in force today (none for a Bill of Supply), zero-value totals allowed, snapshots, HSN summary, automatic allocation of the job's payments, `INVOICE_ISSUED` notification. 409 `TAX_CONFIG_NOT_APPROVED` / `CONFIGURATION_REQUIRED` / `NOTHING_TO_INVOICE` |
 | POST | `/invoices/:id/pdf` | `invoices.read` | Tax invoice PDF (generated once) |
 | POST | `/invoices/:id/credit-notes` | `credit_notes.issue` + `Idempotency-Key` | `{reason, full?, lines[{invoiceLineId, quantity}]}`; full credit cancels the invoice; frees allocations beyond the new balance |
 | POST | `/credit-notes/:id/pdf` | `invoices.read` | Credit note PDF |
@@ -198,7 +198,7 @@ Invoices are issued only when the business profile (with GSTIN), currency and an
 | GET | `/reports/gst-summary?from&to&branchId` | `reports.read` + `invoices.read` | Invoices − credit notes; B2B/B2C, by rate, by HSN/SAC. Exports `invoices`, `gst-summary` |
 | GET | `/customer/invoices`, POST `/customer/invoices/:id/pdf`, `/customer/credit-notes/:id/pdf` | customer token | Own issued invoices only |
 
-Settings keys added: `business`, `tax`, `invoicing`, `numbering.invoiceNumber`, `numbering.creditNoteNumber`.
+Settings keys added: `business`, `tax`, `invoicing`, `numbering.invoiceNumber`, `numbering.billOfSupplyNumber`, `numbering.creditNoteNumber`. Invoice responses carry `documentType` and `documentTypeReason`; the GST summary adds `billsOfSupply {count, total, credited}`, kept out of all GST figures (ADR 0024).
 
 ## Phase 11 endpoints (two-step sign-in, ADR 0011)
 

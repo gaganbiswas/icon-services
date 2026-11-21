@@ -60,7 +60,22 @@ ORG_CODE=… ORG_DISPLAY_NAME=… ORG_TIMEZONE=… BRANCH_CODE=… BRANCH_NAME=�
 
 Open the printed one-time link (24 h), set the password, then set up two-step sign-in. Configure business details,
 currency, numbering, notification templates and staff users in the admin panel. **No demo or UAT data in
-production.**
+production.** Use `ORG_TIMEZONE=Asia/Kolkata`.
+
+Owner-confirmed values to enter (ADR 0021/0024) in **Settings → Business and invoicing**:
+
+| Field | Value |
+|-------|-------|
+| Legal name | ICON INFOSYS (proprietorship) |
+| GSTIN | 19AHDPB5074F1ZK |
+| Address | MIG-7, Nilganj Road, Sodepur — Kolkata — West Bengal (19) — 700110 |
+| Phones | 9903276666, 9330522205 |
+| Emails / website | info@iconinfosys.co.in · www.iconinfosys.co.in |
+| Currency (Settings → money) | INR |
+| Financial year | April |
+| Number formats (defaults) | `MT/{FYS}/{SEQ:1}`, Bill of supply `BS/{FYS}/{SEQ:1}`, credit note `CN/{FYS}/{SEQ:1}` |
+| GST | 18 % (services and parts); confirm HSN/SAC codes, then record the approval (who, when) |
+| Invoice terms, declaration, signatory | Still to be supplied by the owner (question 23) |
 
 ## 5. Updates
 

@@ -29,8 +29,9 @@ Architecture/Product Decision Records (ADRs). Each decision has a status:
 | 0018 | Notification providers (Meta WhatsApp, SMTP, WhatsApp OTP) | Approved; queue item proposed | 2026-11-18 |
 | 0019 | Reports, dashboard and exports | Approved with defaults | 2026-11-19 |
 | 0020 | Production hosting (VPS + Docker, India, RPO 24 h / RTO 1 day) | Approved | 2026-11-19 |
-| 0021 | Business identity; GST invoices only (regular scheme) | Approved | 2026-11-19 |
+| 0021 | Business identity; GST invoices only (regular scheme) | Approved; "GST only" superseded by 0024 | 2026-11-19 |
 | 0022 | GST invoicing with owner-approved defaults | Approved (defaults; accountant review before production) | 2026-11-19 |
 | 0023 | Customer web portal: signed-in area, cookie sessions | Approved | 2026-11-19 |
+| 0024 | Owner tax answers; Bill of Supply per invoice; zero-value invoices | Approved | 2026-11-21 |
 
 New decisions: copy `template.md`, use the next number, add a row above.

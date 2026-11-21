@@ -6,6 +6,13 @@ import { MoneyStringSchema, QuantityStringSchema } from './money.js';
 export const INVOICE_STATUSES = ['DRAFT', 'ISSUED', 'CANCELLED'] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 export const PAYMENT_STATES = ['UNPAID', 'PARTLY_PAID', 'PAID', 'CREDITED'] as const;
+/** GST tax invoice, or Bill of Supply (no GST) chosen by staff with a reason (ADR 0024). */
+export const INVOICE_DOCUMENT_TYPES = ['TAX_INVOICE', 'BILL_OF_SUPPLY'] as const;
+export type InvoiceDocumentType = (typeof INVOICE_DOCUMENT_TYPES)[number];
+export const INVOICE_DOCUMENT_LABELS: Record<InvoiceDocumentType, string> = {
+  TAX_INVOICE: 'Tax invoice',
+  BILL_OF_SUPPLY: 'Bill of supply',
+};
 
 export const InvoiceLineInputSchema = z.object({
   lineType: z.enum(ESTIMATE_LINE_TYPES),
@@ -22,11 +29,20 @@ export const InvoiceLineInputSchema = z.object({
 });
 export type InvoiceLineInput = z.infer<typeof InvoiceLineInputSchema>;
 
-export const UpdateInvoiceDraftSchema = z.object({
-  rowVersion: z.number().int().min(1),
-  lines: z.array(InvoiceLineInputSchema).min(1, 'Add at least one line').max(100),
-  notes: z.string().trim().max(1000).nullable().optional(),
-});
+export const UpdateInvoiceDraftSchema = z
+  .object({
+    rowVersion: z.number().int().min(1),
+    lines: z.array(InvoiceLineInputSchema).min(1, 'Add at least one line').max(100),
+    notes: z.string().trim().max(1000).nullable().optional(),
+    documentType: z.enum(INVOICE_DOCUMENT_TYPES).default('TAX_INVOICE'),
+    /** Required for a Bill of Supply: why no GST is charged (audited, kept on the record). */
+    documentTypeReason: z.string().trim().min(3).max(500).nullable().optional(),
+  })
+  .refine((v) => v.documentType !== 'BILL_OF_SUPPLY' || !!v.documentTypeReason, {
+    path: ['documentTypeReason'],
+    message: 'Give the reason for issuing a Bill of Supply',
+  });
+export type UpdateInvoiceDraft = z.infer<typeof UpdateInvoiceDraftSchema>;
 
 export const CreditNoteRequestSchema = z
   .object({
@@ -87,6 +103,8 @@ export const InvoiceSchema = z.object({
   invoiceNumber: z.string().nullable(),
   financialYear: z.string().nullable(),
   status: z.enum(INVOICE_STATUSES),
+  documentType: z.enum(INVOICE_DOCUMENT_TYPES),
+  documentTypeReason: z.string().nullable(),
   invoiceDate: z.string().nullable(),
   currency: z.string(),
   supplyType: z.enum(['INTRA_STATE', 'INTER_STATE']),
@@ -141,6 +159,7 @@ export const InvoiceSummarySchema = z.object({
   invoiceNumber: z.string().nullable(),
   invoiceDate: z.string().nullable(),
   status: z.enum(INVOICE_STATUSES),
+  documentType: z.enum(INVOICE_DOCUMENT_TYPES),
   jobId: z.uuid(),
   jobNumber: z.string(),
   customerName: z.string(),
@@ -181,6 +200,8 @@ export const GstSummarySchema = z.object({
     igst: z.string(),
     total: z.string(),
   }),
+  /** Bills of Supply (no GST) are kept out of every GST figure above and reported here. */
+  billsOfSupply: z.object({ count: z.number().int(), total: z.string(), credited: z.string() }),
   /** Registered recipients (B2B) vs unregistered (B2C). */
   bySegment: z.array(
     z.object({
@@ -217,6 +238,7 @@ export type GstSummary = z.infer<typeof GstSummarySchema>;
 export const CustomerInvoiceSchema = z.object({
   id: z.uuid(),
   invoiceNumber: z.string(),
+  documentType: z.enum(INVOICE_DOCUMENT_TYPES),
   invoiceDate: z.string(),
   jobNumber: z.string(),
   currency: z.string(),

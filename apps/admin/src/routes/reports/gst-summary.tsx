@@ -86,6 +86,14 @@ export function GstSummaryPage() {
                   </tbody>
                 </table>
               </div>
+              <p>
+                Bills of supply (no GST, not included above): {s.billsOfSupply.count}, total{' '}
+                {formatMoney(s.billsOfSupply.total, s.currency || 'INR')}
+                {s.billsOfSupply.credited !== '0.00'
+                  ? `, credited ${formatMoney(s.billsOfSupply.credited, s.currency || 'INR')}`
+                  : ''}
+                .
+              </p>
               <h2>By HSN/SAC</h2>
               {s.byHsn.length === 0 ? (
                 <p className="muted">Nothing in this period.</p>

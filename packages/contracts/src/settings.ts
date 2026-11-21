@@ -208,8 +208,8 @@ export const PaymentSettingsSchema = z.object({
   methods: z
     .array(z.enum(['CASH', 'UPI', 'BANK_TRANSFER', 'CARD_TERMINAL', 'CHEQUE', 'OTHER']))
     .min(1),
-  /** Footer on payment receipts (PLACEHOLDER until accountant confirms, C27a). */
-  receiptFooter: z.string().min(1).max(1000),
+  /** Optional footer on payment receipts; empty = none (owner: no receipt voucher wording, ADR 0024). */
+  receiptFooter: z.string().max(1000),
 });
 
 export const PhoneSettingsSchema = z.object({
@@ -282,19 +282,23 @@ export const SETTINGS = {
         },
         PAYMENT_RECEIVED: { whatsapp: null, emailSubject: 'Payment received' },
         DELIVERY_CONFIRMED: { whatsapp: null, emailSubject: 'Your device has been handed over' },
-        INVOICE_ISSUED: { whatsapp: null, emailSubject: 'Your tax invoice' },
+        INVOICE_ISSUED: { whatsapp: null, emailSubject: 'Your invoice' },
       } as NotificationSettings['templates'],
       quietHours: null as NotificationSettings['quietHours'],
     },
   },
   'numbering.invoiceNumber': {
     schema: NumberFormatSchema,
-    // ≤ 16 characters as required for GST invoices (ADR 0022).
-    default: { template: 'INV-{FYS}-{SEQ:6}', reset: 'FINANCIAL_YEAR' } satisfies NumberFormat,
+    // Owner format MT/<number>, restarting each April with the year in it (ADR 0024); ≤ 16 characters (GST).
+    default: { template: 'MT/{FYS}/{SEQ:1}', reset: 'FINANCIAL_YEAR' } satisfies NumberFormat,
+  },
+  'numbering.billOfSupplyNumber': {
+    schema: NumberFormatSchema,
+    default: { template: 'BS/{FYS}/{SEQ:1}', reset: 'FINANCIAL_YEAR' } satisfies NumberFormat,
   },
   'numbering.creditNoteNumber': {
     schema: NumberFormatSchema,
-    default: { template: 'CN-{FYS}-{SEQ:6}', reset: 'FINANCIAL_YEAR' } satisfies NumberFormat,
+    default: { template: 'CN/{FYS}/{SEQ:1}', reset: 'FINANCIAL_YEAR' } satisfies NumberFormat,
   },
   business: {
     schema: BusinessProfileSchema.nullable(),
@@ -349,7 +353,7 @@ export const SETTINGS = {
       methods: ['CASH', 'UPI', 'BANK_TRANSFER', 'CARD_TERMINAL', 'CHEQUE', 'OTHER'] as (
         'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CARD_TERMINAL' | 'CHEQUE' | 'OTHER'
       )[],
-      receiptFooter: 'Tax treatment of this payment to be confirmed.',
+      receiptFooter: '',
     },
   },
   phone: {

@@ -1,6 +1,6 @@
 # 0021 — Business identity; GST invoices only (regular scheme)
 
-- **Status:** Approved (owner, 2026-11-19)
+- **Status:** Approved (owner, 2026-11-19). **Partly superseded by ADR 0024 (2026-11-21):** a Bill of Supply may now be issued per invoice; contact numbers printed are 9903276666 and 9330522205.
 - **Date:** 2026-11-19
 
 ## Decisions

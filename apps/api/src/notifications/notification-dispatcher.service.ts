@@ -48,7 +48,7 @@ function emailText(event: NotificationEventName, payload: Record<string, string 
   if (payload['decision']) lines.push(`Decision: ${payload['decision']}`);
   if (payload['invoiceNumber'])
     lines.push(
-      `Tax invoice ${payload['invoiceNumber']}: ${payload['amount'] ?? ''} ${payload['currency'] ?? ''}`.trim(),
+      `${payload['documentLabel'] ?? 'Tax invoice'} ${payload['invoiceNumber']}: ${payload['amount'] ?? ''} ${payload['currency'] ?? ''}`.trim(),
     );
   if (payload['receiptNumber'])
     lines.push(

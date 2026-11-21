@@ -204,7 +204,7 @@ test('a repair goes from intake to delivery, each role using the staff panel', a
   await expect(page.getByRole('heading', { name: 'Draft tax invoice' })).toBeVisible();
   await page.getByRole('button', { name: 'Issue tax invoice' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Issue invoice' }).click();
-  await expect(page.getByRole('heading', { name: /Tax invoice INV-\d{4}-000001/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Tax invoice MT\/\d{4}\/1/ })).toBeVisible();
   // 2500 + CGST 225 + SGST 225
   await expect(page.getByText('₹2,950.00').first()).toBeVisible();
   await page.getByRole('tab', { name: 'Payments' }).click();

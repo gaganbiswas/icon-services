@@ -69,6 +69,8 @@ const BASE = {
   paidTotal: '0.00',
   balance: '2950.00',
   paymentState: 'UNPAID',
+  documentType: 'TAX_INVOICE',
+  documentTypeReason: null,
   amountInWords: '',
   notes: null,
   rowVersion: 1,
@@ -133,7 +135,7 @@ describe('InvoicePanel', () => {
       {
         ...BASE,
         status: 'ISSUED',
-        invoiceNumber: 'INV-2627-000001',
+        invoiceNumber: 'MT/2627/1',
         invoiceDate: '2026-11-19',
         blockers: [],
       },
@@ -141,7 +143,7 @@ describe('InvoicePanel', () => {
     );
     const user = userEvent.setup();
     expect(
-      await screen.findByRole('heading', { name: /Tax invoice INV-2627-000001/ }),
+      await screen.findByRole('heading', { name: /Tax invoice MT\/2627\/1/ }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Credit note' }));
     const dialog = screen.getByRole('dialog');
@@ -158,6 +160,34 @@ describe('InvoicePanel', () => {
       reason: 'Part returned',
       full: false,
       lines: [{ invoiceLineId: 'l1', quantity: '1' }],
+    });
+  });
+
+  it('switches a draft to a Bill of Supply only with a reason', async () => {
+    const calls = setup({ ...BASE, status: 'DRAFT', invoiceNumber: null, blockers: [] }, [
+      'invoices.read',
+      'invoices.write',
+      'invoices.issue',
+    ]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('radio', { name: 'Bill of supply (no GST)' }));
+    const save = screen.getByRole('button', { name: 'Save and recalculate' });
+    expect(save).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Issue tax invoice' })).toBeDisabled();
+    await user.type(
+      screen.getByLabelText('Why no GST is charged (required, kept on record)'),
+      'Exempt supply',
+    );
+    await user.click(save);
+    await waitFor(() => expect(calls.some((c) => c.init.method === 'PUT')).toBe(true));
+    const raw = calls.find((c) => c.init.method === 'PUT')?.init.body;
+    const body = JSON.parse(typeof raw === 'string' ? raw : '{}') as {
+      documentType: string;
+      documentTypeReason: string;
+    };
+    expect(body).toMatchObject({
+      documentType: 'BILL_OF_SUPPLY',
+      documentTypeReason: 'Exempt supply',
     });
   });
 });

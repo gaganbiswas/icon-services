@@ -302,13 +302,14 @@ function JobDetail({
       </section>
       {invoices.length > 0 ? (
         <section aria-labelledby="invoices-heading">
-          <h2 id="invoices-heading">Tax invoices</h2>
+          <h2 id="invoices-heading">Invoices</h2>
           <ul className="plain">
             {invoices.map((inv) => (
               <li key={inv.id}>
                 <p>
                   <strong>{inv.invoiceNumber}</strong> ({inv.invoiceDate}):{' '}
                   {formatMoney(inv.total, inv.currency)}
+                  {inv.documentType === 'BILL_OF_SUPPLY' ? ' — bill of supply (no GST)' : ''}
                   {inv.status === 'CANCELLED'
                     ? ' — cancelled'
                     : inv.balance !== '0.00'
@@ -317,7 +318,7 @@ function JobDetail({
                 </p>
                 <div className="actions">
                   <DocumentButton
-                    label={`Invoice ${inv.invoiceNumber} (PDF)`}
+                    label={`${inv.documentType === 'BILL_OF_SUPPLY' ? 'Bill of supply' : 'Invoice'} ${inv.invoiceNumber} (PDF)`}
                     get={() => client.invoicePdf(inv.id)}
                   />
                   {inv.creditNotes.map((c) => (

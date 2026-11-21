@@ -111,11 +111,12 @@ export function JobDetailScreen({
           {t.message ? `: ${t.message}` : ''}
         </Body>
       ))}
-      {invoices.length > 0 ? <Title>Tax invoices</Title> : null}
+      {invoices.length > 0 ? <Title>Invoices</Title> : null}
       {invoices.map((inv) => (
         <View key={inv.id} style={{ gap: 4 }}>
           <Body>
             {inv.invoiceNumber} ({inv.invoiceDate}): {formatMoney(inv.total, inv.currency)}
+            {inv.documentType === 'BILL_OF_SUPPLY' ? ' — bill of supply (no GST)' : ''}
             {inv.status === 'CANCELLED'
               ? ' — cancelled'
               : inv.balance !== '0.00'
@@ -123,12 +124,17 @@ export function JobDetailScreen({
                 : ' — paid'}
           </Body>
           <Button
-            label={`Share invoice ${inv.invoiceNumber}`}
+            label={`Share ${inv.documentType === 'BILL_OF_SUPPLY' ? 'bill of supply' : 'invoice'} ${inv.invoiceNumber}`}
             variant="secondary"
             onPress={() =>
               void api
                 .invoicePdf(inv.id)
-                .then((link) => sharePdf(link, 'Tax invoice'))
+                .then((link) =>
+                  sharePdf(
+                    link,
+                    inv.documentType === 'BILL_OF_SUPPLY' ? 'Bill of supply' : 'Tax invoice',
+                  ),
+                )
                 .catch((e: unknown) => setError(errorMessage(e)))
             }
           />

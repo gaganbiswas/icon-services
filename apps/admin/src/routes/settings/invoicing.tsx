@@ -39,6 +39,7 @@ interface AllSettings {
   money: { currency: string | null };
   'numbering.invoiceNumber': NumberFormat;
   'numbering.creditNoteNumber': NumberFormat;
+  'numbering.billOfSupplyNumber': NumberFormat;
 }
 
 const LINE_TYPE_LABELS = {
@@ -174,6 +175,10 @@ export function InvoicingSettingsPage() {
                 value: { template: formText(f, 'invoiceTemplate').trim(), reset: 'FINANCIAL_YEAR' },
               },
               {
+                key: 'numbering.billOfSupplyNumber',
+                value: { template: formText(f, 'bosTemplate').trim(), reset: 'FINANCIAL_YEAR' },
+              },
+              {
                 key: 'numbering.creditNoteNumber',
                 value: { template: formText(f, 'creditTemplate').trim(), reset: 'FINANCIAL_YEAR' },
               },
@@ -216,8 +221,14 @@ export function InvoicingSettingsPage() {
             <div className="grid-2">
               <FormField
                 id="invoiceTemplate"
-                label="Invoice number format"
+                label="Tax invoice number format"
                 defaultValue={s['numbering.invoiceNumber'].template}
+                aria-describedby="numbering-hint"
+              />
+              <FormField
+                id="bosTemplate"
+                label="Bill of supply number format"
+                defaultValue={s['numbering.billOfSupplyNumber'].template}
                 aria-describedby="numbering-hint"
               />
               <FormField
@@ -227,8 +238,9 @@ export function InvoicingSettingsPage() {
               />
             </div>
             <p id="numbering-hint" className="muted small">
-              Tokens: {'{FYS}'} = 2627, {'{FY}'} = 2026-27, {'{SEQ:6}'} = 000001. GST invoice
-              numbers may have at most 16 characters and restart each financial year.
+              Tokens: {'{FYS}'} = 2627, {'{FY}'} = 2026-27, {'{SEQ:1}'} = 1, {'{SEQ:6}'} = 000001.
+              Example: MT/{'{FYS}'}/{'{SEQ:1}'} gives MT/2627/1. Numbers may have at most 16
+              characters and restart each financial year, so keep the year in the format.
             </p>
           </SettingForm>
         </>

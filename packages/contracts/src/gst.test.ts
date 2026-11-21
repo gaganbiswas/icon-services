@@ -211,16 +211,24 @@ describe('India helpers', () => {
 });
 
 describe('invoice settings', () => {
-  it('default invoice number fits the 16-character GST limit', () => {
-    const fmt = SETTINGS['numbering.invoiceNumber'].default;
-    expect(NumberFormatSchema.parse(fmt)).toBeTruthy();
-    const n = formatNumber(fmt.template, {
-      sequence: 999999,
-      year: 2026,
-      fy: { label: '2026-27', short: '2627' },
-    });
-    expect(n).toBe('INV-2627-999999');
-    expect(n.length).toBeLessThanOrEqual(16);
+  it('default numbers follow the owner format MT/<year>/<n> and fit the 16-character GST limit', () => {
+    const fy = { label: '2026-27', short: '2627' };
+    const number = (
+      key:
+        'numbering.invoiceNumber' | 'numbering.billOfSupplyNumber' | 'numbering.creditNoteNumber',
+      sequence: number,
+    ) => {
+      const fmt = SETTINGS[key].default;
+      expect(NumberFormatSchema.parse(fmt)).toBeTruthy();
+      expect(fmt.reset).toBe('FINANCIAL_YEAR');
+      return formatNumber(fmt.template, { sequence, year: 2026, fy });
+    };
+    expect(number('numbering.invoiceNumber', 1)).toBe('MT/2627/1');
+    expect(number('numbering.billOfSupplyNumber', 12)).toBe('BS/2627/12');
+    expect(number('numbering.creditNoteNumber', 3)).toBe('CN/2627/3');
+    // 16 characters allow up to 99,999,999 documents a year; the API refuses anything longer.
+    expect(number('numbering.invoiceNumber', 99_999_999)).toHaveLength(16);
+    expect(number('numbering.invoiceNumber', 100_000_000).length).toBeGreaterThan(16);
     expect(
       NumberFormatSchema.safeParse({ template: 'INV-{SEQ:5}', reset: 'FINANCIAL_YEAR' }).success,
     ).toBe(false);

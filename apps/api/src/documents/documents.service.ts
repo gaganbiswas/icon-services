@@ -249,7 +249,8 @@ export class DocumentsService {
       status: payment.status,
       reversalReason: payment.reversalReason,
       footer: payments.receiptFooter,
-      footerIsPlaceholder: payments.receiptFooter === SETTINGS.payments.default.receiptFooter,
+      // The default is now no footer (owner Q27a); any text entered is the business's own.
+      footerIsPlaceholder: false,
       generatedAt: `${formatDateTime(new Date(), timeZone)} (${timeZone})`,
     };
   }
@@ -458,7 +459,7 @@ export class DocumentsService {
     ]);
     const m2 = (v: { toFixed(n: number): string }) => v.toFixed(2);
     const snapshot: TaxDocSnapshot = {
-      kind: 'TAX_INVOICE',
+      kind: invoice.documentType,
       number: invoice.invoiceNumber ?? '',
       date: invoice.invoiceDate?.toISOString().slice(0, 10) ?? '',
       reference: null,
@@ -523,7 +524,7 @@ export class DocumentsService {
       invoice.branchId,
       'invoice',
       invoiceId,
-      'TAX_INVOICE',
+      invoice.documentType,
       snapshot,
       actor,
     );
@@ -543,7 +544,7 @@ export class DocumentsService {
     const s = note.snapshot as unknown as {
       noteDate: string;
       reason: string;
-      invoice: { number: string };
+      invoice: { number: string; documentType?: 'TAX_INVOICE' | 'BILL_OF_SUPPLY' };
       supplier: TaxDocSnapshot['supplier'];
       recipient: TaxDocSnapshot['recipient'];
       supplyType: TaxDocSnapshot['supplyType'];
@@ -556,9 +557,16 @@ export class DocumentsService {
     const business = await this.settings.get(organizationId, 'business');
     const snapshot: TaxDocSnapshot = {
       kind: 'CREDIT_NOTE',
+      withoutGst: s.invoice.documentType === 'BILL_OF_SUPPLY',
       number: note.creditNoteNumber,
       date: s.noteDate,
-      reference: { label: 'Against invoice', value: s.invoice.number },
+      reference: {
+        label:
+          s.invoice.documentType === 'BILL_OF_SUPPLY'
+            ? 'Against bill of supply'
+            : 'Against invoice',
+        value: s.invoice.number,
+      },
       reason: s.reason,
       supplier: s.supplier,
       recipient: s.recipient,
@@ -609,7 +617,7 @@ export class DocumentsService {
     branchId: string,
     entityType: string,
     entityId: string,
-    documentType: 'TAX_INVOICE' | 'CREDIT_NOTE',
+    documentType: 'TAX_INVOICE' | 'BILL_OF_SUPPLY' | 'CREDIT_NOTE',
     snapshot: TaxDocSnapshot,
     actor: { userId: string | null },
   ): Promise<DocumentLink> {

@@ -95,7 +95,7 @@
 | I2 | Mobile browser width (360 px): job list and job detail | No horizontal scrolling; readable | | | |
 | I3 | Statuses are understandable without colour | Text labels everywhere | | | |
 | I4 | Colour contrast of text and buttons (browser tool) | WCAG AA (4.5:1 text) | | | |
-| I5 | Accounts: prepare, issue, print a GST invoice; record payment; partial credit note; GST summary | Correct CGST/SGST (West Bengal) or IGST (other states); numbers INV-2627-…; issued invoice cannot be edited; balances and reports update | | | |
+| I5 | Accounts: prepare, issue, print a GST invoice; record payment; partial credit note; GST summary | Correct CGST/SGST (West Bengal) or IGST (other states); numbers MT/2627/1, MT/2627/2 …; a Bill of Supply (reason required) is numbered BS/2627/… with no GST; a warranty-only job gets a ₹0 invoice; issued invoice cannot be edited; balances and reports update | | | |
 | I6 | Real WhatsApp / email delivery | **Blocked** — needs Meta approval and sender domain (Phase 10 go-live) | | | |
 
 ## Sign-off

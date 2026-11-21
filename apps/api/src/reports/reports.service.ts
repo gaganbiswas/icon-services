@@ -467,66 +467,79 @@ export class ReportsService {
       igst: Prisma.Decimal | null;
       total: Prisma.Decimal | null;
     };
-    const [[invoices], [credits], segments, rates, hsn, { currency }] = await Promise.all([
-      this.prisma.$queryRaw<Sums[]>`
+    const [[invoices], [credits], segments, rates, hsn, { currency }, [bos], [bosCredits]] =
+      await Promise.all([
+        this.prisma.$queryRaw<Sums[]>`
         SELECT count(*)::int AS count, sum(i.taxable_total) AS taxable, sum(i.cgst_total) AS cgst, sum(i.sgst_total) AS sgst,
                sum(i.igst_total) AS igst, sum(i.total) AS total
-        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED')
+        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.document_type = 'TAX_INVOICE'
           AND i.invoice_date BETWEEN ${from}::date AND ${to}::date`,
-      this.prisma.$queryRaw<Sums[]>`
+        this.prisma.$queryRaw<Sums[]>`
         SELECT count(*)::int AS count, sum(cn.taxable_total) AS taxable, sum(cn.cgst_total) AS cgst, sum(cn.sgst_total) AS sgst,
                sum(cn.igst_total) AS igst, sum(cn.total) AS total
-        FROM credit_notes cn WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date`,
-      this.prisma.$queryRaw<
-        { segment: 'B2B' | 'B2C'; count: number; taxable: Prisma.Decimal; tax: Prisma.Decimal }[]
-      >`
+        FROM credit_notes cn JOIN invoices ci ON ci.id = cn.invoice_id AND ci.document_type = 'TAX_INVOICE'
+        WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date`,
+        this.prisma.$queryRaw<
+          { segment: 'B2B' | 'B2C'; count: number; taxable: Prisma.Decimal; tax: Prisma.Decimal }[]
+        >`
         SELECT CASE WHEN i.recipient->>'gstin' IS NOT NULL THEN 'B2B' ELSE 'B2C' END AS segment,
                count(*)::int AS count, sum(i.taxable_total) AS taxable, sum(i.tax_total) AS tax
-        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED')
+        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.document_type = 'TAX_INVOICE'
           AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
         GROUP BY 1 ORDER BY 1`,
-      this.prisma.$queryRaw<
-        {
-          gst_rate: Prisma.Decimal;
-          taxable: Prisma.Decimal;
-          cgst: Prisma.Decimal;
-          sgst: Prisma.Decimal;
-          igst: Prisma.Decimal;
-        }[]
-      >`
+        this.prisma.$queryRaw<
+          {
+            gst_rate: Prisma.Decimal;
+            taxable: Prisma.Decimal;
+            cgst: Prisma.Decimal;
+            sgst: Prisma.Decimal;
+            igst: Prisma.Decimal;
+          }[]
+        >`
         WITH movements AS (
           SELECT l.gst_rate, l.taxable_value AS taxable, l.cgst_amount AS cgst, l.sgst_amount AS sgst, l.igst_amount AS igst
           FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
-          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
+          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.document_type = 'TAX_INVOICE' AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
           UNION ALL
           SELECT l.gst_rate, -cl.taxable_value, -cl.cgst_amount, -cl.sgst_amount, -cl.igst_amount
           FROM credit_note_lines cl JOIN credit_notes cn ON cn.id = cl.credit_note_id JOIN invoice_lines l ON l.id = cl.invoice_line_id
+            JOIN invoices ci ON ci.id = cn.invoice_id AND ci.document_type = 'TAX_INVOICE'
           WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date)
         SELECT gst_rate, sum(taxable) AS taxable, sum(cgst) AS cgst, sum(sgst) AS sgst, sum(igst) AS igst
         FROM movements GROUP BY gst_rate ORDER BY gst_rate`,
-      this.prisma.$queryRaw<
-        {
-          hsn_sac: string;
-          gst_rate: Prisma.Decimal;
-          quantity: Prisma.Decimal;
-          taxable: Prisma.Decimal;
-          cgst: Prisma.Decimal;
-          sgst: Prisma.Decimal;
-          igst: Prisma.Decimal;
-        }[]
-      >`
+        this.prisma.$queryRaw<
+          {
+            hsn_sac: string;
+            gst_rate: Prisma.Decimal;
+            quantity: Prisma.Decimal;
+            taxable: Prisma.Decimal;
+            cgst: Prisma.Decimal;
+            sgst: Prisma.Decimal;
+            igst: Prisma.Decimal;
+          }[]
+        >`
         WITH movements AS (
           SELECT l.hsn_sac, l.gst_rate, l.quantity, l.taxable_value AS taxable, l.cgst_amount AS cgst, l.sgst_amount AS sgst, l.igst_amount AS igst
           FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
-          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
+          WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED') AND i.document_type = 'TAX_INVOICE' AND i.invoice_date BETWEEN ${from}::date AND ${to}::date
           UNION ALL
           SELECT l.hsn_sac, l.gst_rate, -cl.quantity, -cl.taxable_value, -cl.cgst_amount, -cl.sgst_amount, -cl.igst_amount
           FROM credit_note_lines cl JOIN credit_notes cn ON cn.id = cl.credit_note_id JOIN invoice_lines l ON l.id = cl.invoice_line_id
+            JOIN invoices ci ON ci.id = cn.invoice_id AND ci.document_type = 'TAX_INVOICE'
           WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date)
         SELECT hsn_sac, gst_rate, sum(quantity) AS quantity, sum(taxable) AS taxable, sum(cgst) AS cgst, sum(sgst) AS sgst, sum(igst) AS igst
         FROM movements GROUP BY hsn_sac, gst_rate ORDER BY hsn_sac, gst_rate`,
-      this.settings.get(org, 'money'),
-    ]);
+        this.settings.get(org, 'money'),
+        // Bills of Supply (no GST, ADR 0024) are reported separately, never mixed into GST figures.
+        this.prisma.$queryRaw<{ count: number; total: Prisma.Decimal | null }[]>`
+        SELECT count(*)::int AS count, sum(i.total) AS total
+        FROM invoices i WHERE i.organization_id = ${org}::uuid AND ${inv} AND i.status IN ('ISSUED', 'CANCELLED')
+          AND i.document_type = 'BILL_OF_SUPPLY' AND i.invoice_date BETWEEN ${from}::date AND ${to}::date`,
+        this.prisma.$queryRaw<{ total: Prisma.Decimal | null }[]>`
+        SELECT sum(cn.total) AS total
+        FROM credit_notes cn JOIN invoices ci ON ci.id = cn.invoice_id AND ci.document_type = 'BILL_OF_SUPPLY'
+        WHERE cn.organization_id = ${org}::uuid AND ${cnScope} AND cn.note_date BETWEEN ${from}::date AND ${to}::date`,
+      ]);
     const m = (v: Prisma.Decimal | null | undefined) =>
       new Decimal(v?.toString() ?? '0').toFixed(2);
     const block = (s: Sums | undefined) => ({
@@ -547,6 +560,11 @@ export class ReportsService {
       to: q.to,
       invoices: a,
       creditNotes: c,
+      billsOfSupply: {
+        count: bos?.count ?? 0,
+        total: m(bos?.total),
+        credited: m(bosCredits?.total),
+      },
       net: {
         taxable: diff('taxable'),
         cgst: diff('cgst'),

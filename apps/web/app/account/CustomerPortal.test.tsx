@@ -158,6 +158,7 @@ describe('customer portal', () => {
             {
               id: 'inv-1',
               invoiceNumber: 'INV-2627-000001',
+              documentType: 'TAX_INVOICE',
               invoiceDate: '2026-11-19',
               jobNumber: 'A1-2026-000007',
               currency: 'INR',

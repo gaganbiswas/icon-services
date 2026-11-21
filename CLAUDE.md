@@ -36,17 +36,22 @@
     integration and email.
 -   Delivery, payment collection, payment modes, and printable delivery
     challan.
--   Billing mode: **GST invoices only** (regular scheme, GSTIN
-    19AHDPB5074F1ZK, West Bengal). No non-GST / bill-of-supply mode
-    (owner decision, ADR 0021).
+-   Billing mode: **GST tax invoices** (regular scheme, GSTIN
+    19AHDPB5074F1ZK, West Bengal), plus a **Bill of Supply** (no GST)
+    that accounts staff may choose per invoice with a recorded reason
+    (owner decision 2026-11-21, ADR 0024; supersedes "GST only" in ADR 0021).
 -   Service workflow must preserve a full audit trail.
 
 ### Important assumptions that must remain configurable
 
-1.  Confirmed (ADR 0021): GST-registered under the regular scheme in
-    West Bengal, India (GSTIN 19AHDPB5074F1ZK). Still **not** confirmed:
-    currency, place-of-supply rules, invoice series, tax rates, HSN/SAC
-    mapping, rounding, and e-invoicing applicability.
+1.  Confirmed (ADR 0021, ADR 0024): GST-registered under the regular
+    scheme in West Bengal, India (GSTIN 19AHDPB5074F1ZK); currency INR;
+    time zone Asia/Kolkata (+05:30); financial year April–March; GST
+    18 % added on top of prices; CGST+SGST within West Bengal, IGST
+    otherwise; total rounded to the rupee; no e-invoicing, e-way bill or
+    reverse charge; invoice numbers `MT/<year>/<n>`; zero-value invoices
+    for warranty jobs. Still **not** confirmed: HSN/SAC codes and invoice
+    terms/signatory wording.
     Build a configurable tax engine. Do not hard-code tax rates or claim
     legal compliance. Obtain approval from the business's accountant/tax
     professional before production billing.
@@ -330,11 +335,14 @@ change historical invoice prices when catalogue prices change.
 
 ### 4.7 Invoice and tax
 
-Invoices are **GST invoices only** (owner decision, ADR 0021): tax
-calculation according to the configured and legally approved
-jurisdiction settings. Do not build a non-GST / bill-of-supply mode. Keep
-a tax-mode field in the invoice model so another mode could be added
-later without schema changes, but implement and expose only `GST`.
+Invoices are **GST tax invoices** by default, with tax calculated
+according to the configured and legally approved jurisdiction settings.
+Accounts staff may instead issue a **Bill of Supply** (no GST, own number
+series) for a specific invoice, giving a reason that is stored and audited
+(owner decision, ADR 0024). The invoice model's `document_type` field holds
+the choice; a database check guarantees a Bill of Supply carries no tax.
+Do not invent the situations in which a Bill of Supply applies; staff
+decide, and the accountant should review.
 
 Invoice requirements: - Unique invoice number by branch/series/financial
 year, generated safely under concurrent requests. - Link to job,
@@ -902,7 +910,7 @@ customer Android app; receipt prints.
 
 -   First obtain written confirmation of jurisdiction and tax
     configuration from owner/accountant.
--   Implement GST invoicing (GST only, ADR 0021), effective-dated tax rules,
+-   Implement GST invoicing (tax invoice + staff-chosen Bill of Supply, ADR 0024), effective-dated tax rules,
     decimal-safe calculation, invoice numbering, immutable snapshots,
     PDF templates, credit notes/void workflow.
 -   Add tax calculation test vectors approved by the accountant.

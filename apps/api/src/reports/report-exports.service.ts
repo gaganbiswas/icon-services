@@ -7,6 +7,7 @@ import {
   type PermissionCode,
   PeriodSchema,
   DateRangeSchema,
+  INVOICE_DOCUMENT_LABELS,
 } from '@icon/contracts';
 import type { PrismaClient } from '@icon/database';
 import { z } from 'zod';
@@ -341,6 +342,7 @@ export class ReportExportsService {
           filters: `${q.from} to ${q.to}${q.branchId ? ' · one branch' : ' · all permitted branches'}`,
           columns: [
             { key: 'invoiceNumber', label: 'Invoice', type: 'text' },
+            { key: 'documentType', label: 'Type', type: 'text' },
             { key: 'invoiceDate', label: 'Date', type: 'date' },
             { key: 'jobNumber', label: 'Job', type: 'text' },
             { key: 'customerName', label: 'Customer', type: 'text' },
@@ -354,6 +356,7 @@ export class ReportExportsService {
           ],
           rows: page.items.map((r) => ({
             ...r,
+            documentType: INVOICE_DOCUMENT_LABELS[r.documentType],
             status: humanize(r.status === 'ISSUED' ? r.paymentState : r.status),
           })),
         };
@@ -367,6 +370,7 @@ export class ReportExportsService {
           notes: [
             'Invoices by invoice date minus credit notes by note date. A working summary for return preparation; review with the accountant before filing.',
             `Net: taxable ${s.net.taxable}, CGST ${s.net.cgst}, SGST ${s.net.sgst}, IGST ${s.net.igst}, total ${s.net.total}`,
+            `Bills of supply (no GST, not included above): ${s.billsOfSupply.count}, total ${s.billsOfSupply.total}, credited ${s.billsOfSupply.credited}`,
           ],
           columns: [
             { key: 'hsnSac', label: 'HSN/SAC', type: 'text' },

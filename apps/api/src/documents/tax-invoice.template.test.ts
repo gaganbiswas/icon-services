@@ -118,4 +118,32 @@ describe('tax invoice template', () => {
       expect(html).toContain(text);
     expect(html).not.toContain('<th class="num">CGST</th>');
   });
+
+  it('prints a Bill of Supply without any GST columns, totals or summary', () => {
+    const html = renderTaxDocumentHtml({
+      ...base,
+      kind: 'BILL_OF_SUPPLY',
+      totals: { ...base.totals, cgst: '0.00', sgst: '0.00', igst: '0.00' },
+    });
+    expect(html).toContain('<h1>Bill of Supply</h1>');
+    expect(html).toContain('No GST charged');
+    expect(html).toContain('Bill to');
+    for (const text of [
+      'CGST',
+      'SGST',
+      'IGST',
+      'GST rate',
+      'Taxable value',
+      'Reverse charge',
+      'Tax Invoice',
+    ])
+      expect(html).not.toContain(text);
+  });
+
+  it('prints a credit note against a Bill of Supply without GST', () => {
+    const html = renderTaxDocumentHtml({ ...base, kind: 'CREDIT_NOTE', withoutGst: true });
+    expect(html).toContain('<h1>Credit Note</h1>');
+    expect(html).not.toContain('CGST');
+    expect(html).toContain('Credit total');
+  });
 });

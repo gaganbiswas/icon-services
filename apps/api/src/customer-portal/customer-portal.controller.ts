@@ -234,6 +234,7 @@ export class CustomerPortalController {
     return rows.map((r) => ({
       id: r.id,
       invoiceNumber: r.invoiceNumber ?? '',
+      documentType: r.documentType,
       invoiceDate: r.invoiceDate?.toISOString().slice(0, 10) ?? '',
       jobNumber: r.job.jobNumber,
       currency: r.currency,

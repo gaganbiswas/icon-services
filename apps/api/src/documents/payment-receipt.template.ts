@@ -67,7 +67,7 @@ ${s.status === 'REVERSED' ? `<div class="reversed">REVERSED — this payment was
   ${row('Reference', s.reference)}
 </table>
 <p>This is a receipt for money received. It is not an invoice.</p>
-<div class="footer${s.footerIsPlaceholder ? ' placeholder' : ''}">${e(s.footer)}</div>
+${s.footer ? `<div class="footer${s.footerIsPlaceholder ? ' placeholder' : ''}">${e(s.footer)}</div>` : ''}
 <div class="signature">Received by</div>
 <p class="footer">Generated ${e(s.generatedAt)}</p>
 </body>

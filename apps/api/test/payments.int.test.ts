@@ -313,7 +313,8 @@ describe('Payments, refunds, reversals and receipts (real PostgreSQL)', () => {
       expect(v2.snapshot).toMatchObject({
         status: 'REVERSED',
         reversalReason: 'Cheque bounced',
-        footerIsPlaceholder: true,
+        footer: '', // no tax footer on receipts (owner Q27a, ADR 0024)
+        footerIsPlaceholder: false,
       });
       const v1 = await t.prisma.document.findUniqueOrThrow({ where: { id: first.documentId } });
       expect(v1.snapshot).toMatchObject({ status: 'RECORDED' });

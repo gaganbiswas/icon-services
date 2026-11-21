@@ -1,4 +1,9 @@
-import { type InvoiceSummary, type Page, formatMoney } from '@icon/contracts';
+import {
+  type InvoiceSummary,
+  type Page,
+  formatMoney,
+  INVOICE_DOCUMENT_LABELS,
+} from '@icon/contracts';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -83,7 +88,8 @@ export function InvoiceRegister() {
                 <table className="data">
                   <thead>
                     <tr>
-                      <th scope="col">Invoice</th>
+                      <th scope="col">Number</th>
+                      <th scope="col">Type</th>
                       <th scope="col">Date</th>
                       <th scope="col">Job</th>
                       <th scope="col">Customer</th>
@@ -106,6 +112,7 @@ export function InvoiceRegister() {
                     {p.items.map((r) => (
                       <tr key={r.id}>
                         <td>{r.invoiceNumber ?? 'Draft'}</td>
+                        <td>{INVOICE_DOCUMENT_LABELS[r.documentType]}</td>
                         <td>{r.invoiceDate ?? '—'}</td>
                         <td>
                           <Link to="/jobs/$jobId" params={{ jobId: r.jobId }}>

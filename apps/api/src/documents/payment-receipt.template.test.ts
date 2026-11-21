@@ -40,4 +40,13 @@ describe('renderPaymentReceiptHtml', () => {
     expect(html).toContain('REVERSED — this payment was reversed: Cheque bounced');
     expect(html).toContain('size: 80mm auto');
   });
+
+  it('prints no footer when none is configured', () => {
+    const html = renderPaymentReceiptHtml(
+      { ...snapshot, footer: '', footerIsPlaceholder: false },
+      'A4',
+    );
+    expect(html).not.toContain('class="footer placeholder"');
+    expect(html).not.toContain('<div class="footer');
+  });
 });

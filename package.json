@@ -35,5 +35,8 @@
     "prettier": "3.10.1",
     "turbo": "2.11.12",
     "typescript": "6.0.3"
+  },
+  "overrides": {
+    "effect": "3.22.4"
   }
 }

@@ -24,41 +24,35 @@ confirmation from the business's accountant / tax professional.
 
 ## B. Legal entity and business profile
 
-7. Legal registered name of the business and trading/display name. **ICON INFOSYS (as on GST registration; confirm legal vs trading name are the same).** (2026-11-19)
-8. Legal entity type (proprietorship, partnership, LLP, private limited, other). _answer_ (GSTIN PAN AHDPB5074F has 4th character "P" = individual/proprietorship — please confirm.)
-9. Registered address and business/service-centre address(es), including
-   country, state, PIN/postal code. **MIG-7, Nilganj Road, Sodepur, Kolkata 700110, West Bengal, India.** (Registered and service-centre address the same? Other branches? — confirm.)
-10. Business phone, email, website. **Contact: Uttam Biswas — 98303 77112, 93305 22205, 98301 85448, 99032 76666; info@iconinfosys.co.in, uttam@iconinfosys.co.in.** Website and which number/email to print on documents: _answer_
-11. Default currency (do not assume INR). **Default in use (ADR 0022 — accountant to confirm):** INR.
-12. Time zone. **Default in use (ADR 0022 — accountant to confirm):** Asia/Kolkata.
-13. Financial year start/end (e.g. 1 April – 31 March?). **[ACCOUNTANT]** **Default in use (ADR 0022 — accountant to confirm):** 1 April – 31 March.
+Answered by the owner on 2026-11-21 (ADR 0024).
+
+7. Legal registered name of the business and trading/display name. **ICON INFOSYS.**
+8. Legal entity type. **Proprietorship.**
+9. Registered address and business/service-centre address(es). **MIG-7, Nilganj Road, Sodepur, Kolkata 700110, West Bengal, India** (the written answer said 700 100; the owner confirmed 700110).
+10. Business phone, email, website. **9903276666, 9330522205; info@iconinfosys.co.in; www.iconinfosys.co.in** (printed on documents).
+11. Default currency. **INR.**
+12. Time zone. **+05:30 (Asia/Kolkata).**
+13. Financial year start/end. **April to March.**
 
 ## C. Tax and invoicing **[ACCOUNTANT]**
 
-14. Is the business GST-registered? GSTIN(s) per state/branch? **Yes — 19AHDPB5074F1ZK (West Bengal; format and check digit validated).**
-15. Composition scheme or regular scheme? **Regular.**
-16. In what situations should a **NON_GST** invoice be issued, and what exact
-    legal wording must appear on it (e.g. "Bill of Supply" or other)? **Never — GST invoices only (ADR 0021).**
-17. Tax rates applicable to: labour/service charges, spare parts, on-site
-    visit charges, diagnostic fees. With HSN/SAC codes for each. **Default in use (ADR 0022 — accountant to confirm):** services/labour SAC 998713 @ 18 %, parts HSN 8473 @ 18 % — saved as DRAFT; invoices cannot be issued until someone records the accountant's approval in Settings.
-18. Place-of-supply rules to apply (intra-state CGST+SGST vs inter-state IGST)
-    — and for on-site service at a customer address? **Default in use (ADR 0022 — accountant to confirm):** customer GSTIN state, else address state, else West Bengal; same state → CGST+SGST, otherwise IGST.
-19. Prices entered tax-inclusive or tax-exclusive? Can it differ per line? **Default in use (ADR 0022 — accountant to confirm):** tax-exclusive for all lines.
-20. Rounding rules: per line or per invoice; round-off to nearest rupee/unit
-    shown as a separate line? **Default in use (ADR 0022 — accountant to confirm):** tax per line to paise (half-up); total to the nearest rupee with a "Round off" line.
-21. Is e-invoicing (IRN/QR) applicable based on turnover? E-way bill for
-    device delivery? **Default in use (ADR 0022 — accountant to confirm):** neither generated.
-22. Is reverse charge ever applicable? **Default in use (ADR 0022 — accountant to confirm):** no ("Reverse charge: No" printed).
-23. Mandatory invoice fields and exact wording, terms, declaration, and
-    authorized signatory name/designation. **Default in use (ADR 0022 — accountant to confirm):** standard GST invoice fields; terms/declaration and signatory are settings (placeholders until supplied).
-24. Invoice numbering format and series (per branch? per financial year?
-    separate series for GST and non-GST?). Max length 16 chars if Indian GST applies. **Default in use (ADR 0022 — accountant to confirm):** `INV-2627-000001` (one series, yearly reset); credit notes `CN-2627-000001`.
-25. Credit-note and invoice-cancellation process the accountant requires. **Default in use (ADR 0022 — accountant to confirm):** never edit/delete; credit note for some lines or the whole invoice (cancels it), with reason, audited.
-26. Warranty repairs: how are manufacturer-reimbursed or zero-charge warranty
-    jobs invoiced (zero-value invoice, no invoice, claim document)? **Default in use (ADR 0022 — accountant to confirm):** only customer-payable lines invoiced; no invoice when nothing is payable.
-27. Can the accountant provide a set of **sample invoices with expected
-    totals** to use as test vectors? _answer_ (Still needed — current tests use our own worked examples.)
-27a. Payments received before an invoice (advances): is a GST receipt voucher required, and what wording must a payment receipt carry? (PLACEHOLDER footer in use: "Tax treatment of this payment to be confirmed.") **Default in use (ADR 0022 — accountant to confirm):** advances stay on account and are applied automatically when the invoice is issued; no separate receipt voucher.
+Answered by the owner on 2026-11-21 (ADR 0024).
+
+14. GST registration / GSTIN. **Yes — 19AHDPB5074F1ZK (West Bengal).**
+15. Composition or regular scheme. **Regular.**
+16. When is a Bill of Supply (no GST) issued? **Staff choose per invoice, with a recorded reason.** (Supersedes "GST only" in ADR 0021.) The accountant should confirm which cases qualify.
+17. Tax rates. **18 %.** HSN/SAC codes not given — suggestions in use: SAC 998713 (services/labour), HSN 8473 (parts). _HSN/SAC to confirm._
+18. Place of supply. **CGST + SGST within West Bengal, IGST otherwise.**
+19. Tax-inclusive or tax-exclusive prices. **GST added on top (tax-exclusive), all lines.**
+20. Rounding. **Yes — total rounded to the nearest rupee, shown as a "Round off" line.**
+21. E-invoicing / e-way bill. **No.**
+22. Reverse charge. **No.**
+23. Mandatory wording, terms, declaration, signatory. _answer_ (placeholders in settings.)
+24. Invoice numbering. **MT/<number>, restarting each April with the year: `MT/2627/1`.** Bill of Supply `BS/2627/1`, credit notes `CN/2627/1` (chosen to match; changeable).
+25. Credit-note / cancellation process. **Yes — as built** (credit note for some lines or the whole invoice, with reason, audited).
+26. Warranty / zero-charge jobs. **Zero-value invoice** (warranty lines listed at ₹0).
+27. Accountant sample invoices. **No.**
+27a. GST receipt voucher for advances / receipt wording. **No** (receipts carry no tax footer).
 
 ## D. Operations and policies
 

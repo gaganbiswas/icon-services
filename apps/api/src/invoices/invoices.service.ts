@@ -4,7 +4,9 @@ import {
   type CreditNoteRequest,
   type GstLineResult,
   GstInputError,
+  INVOICE_DOCUMENT_LABELS,
   type Invoice,
+  type InvoiceDocumentType,
   type InvoiceLineInput,
   type InvoiceSummary,
   type Page,
@@ -201,16 +203,18 @@ export class InvoicesService {
     return rate.ratePercent;
   }
 
+  /** Bill of Supply lines keep their HSN/SAC but carry no GST (ADR 0024). */
   private computeLines(
     lines: readonly InvoiceLineInput[],
     tax: TaxSettings,
     supply: SupplyType,
     date: string,
+    documentType: InvoiceDocumentType = 'TAX_INVOICE',
   ) {
     try {
       return lines.map((l, i) => {
         const category = this.categoryFor(tax, l);
-        const gstRate = this.rateOn(category, date);
+        const gstRate = documentType === 'BILL_OF_SUPPLY' ? '0' : this.rateOn(category, date);
         const result = computeGstLine(
           { quantity: l.quantity, unitPrice: l.unitPrice, discount: l.discount, gstRate },
           supply,
@@ -311,18 +315,21 @@ export class InvoicesService {
       orderBy: { version: 'desc' },
       include: { lines: { orderBy: { position: 'asc' } } },
     });
-    const sourceLines =
-      estimate?.status === 'APPROVED'
-        ? estimate.lines.filter((l) => l.coverage === 'CUSTOMER_PAY')
-        : [];
-    const inputs: InvoiceLineInput[] = sourceLines.map((l) => ({
-      lineType: l.lineType,
-      description: l.description,
-      quantity: l.quantity.toString(),
-      unit: l.unit,
-      unitPrice: l.unitPrice.toString(),
-      discount: l.discount.toString(),
-    }));
+    // Every approved line is listed; warranty and goodwill lines at zero value, so
+    // warranty jobs get a zero-value invoice (owner Q26, ADR 0024).
+    const sourceLines = estimate?.status === 'APPROVED' ? estimate.lines : [];
+    const inputs: InvoiceLineInput[] = sourceLines.map((l) => {
+      const free = l.coverage !== 'CUSTOMER_PAY';
+      const note = l.coverage === 'WARRANTY' ? ' (covered by warranty)' : ' (no charge)';
+      return {
+        lineType: l.lineType,
+        description: free ? `${l.description.slice(0, 500 - note.length)}${note}` : l.description,
+        quantity: l.quantity.toString(),
+        unit: l.unit,
+        unitPrice: free ? '0' : l.unitPrice.toString(),
+        discount: free ? '0' : l.discount.toString(),
+      };
+    });
     const id = await this.prisma.$transaction(async (tx) => {
       const recipient = await this.recipient(tx, principal.organizationId, job.customerId, config);
       const supply = supplyTypeFor(this.supplierState(config), recipient.stateCode);
@@ -370,8 +377,23 @@ export class InvoicesService {
   async updateDraft(
     principal: Principal,
     id: string,
-    input: { rowVersion: number; lines: InvoiceLineInput[]; notes?: string | null | undefined },
+    input: {
+      rowVersion: number;
+      lines: InvoiceLineInput[];
+      notes?: string | null | undefined;
+      documentType?: InvoiceDocumentType | undefined;
+      documentTypeReason?: string | null | undefined;
+    },
   ): Promise<Invoice> {
+    const documentType = input.documentType ?? 'TAX_INVOICE';
+    const documentTypeReason =
+      documentType === 'BILL_OF_SUPPLY' ? (input.documentTypeReason?.trim() ?? null) : null;
+    if (documentType === 'BILL_OF_SUPPLY' && !documentTypeReason)
+      throw new AppException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'Give the reason for issuing a Bill of Supply',
+      );
     const config = await this.config(principal.organizationId);
     await this.prisma.$transaction(async (tx) => {
       const invoice = await this.invoiceInScope(principal, id, tx);
@@ -388,11 +410,19 @@ export class InvoicesService {
         config,
       );
       const supply = supplyTypeFor(this.supplierState(config), recipient.stateCode);
-      const computed = this.computeLines(input.lines, config.tax, supply, today(config.timezone));
+      const computed = this.computeLines(
+        input.lines,
+        config.tax,
+        supply,
+        today(config.timezone),
+        documentType,
+      );
       const updated = await tx.invoice.updateMany({
         where: { id, status: 'DRAFT', rowVersion: input.rowVersion },
         data: {
           rowVersion: { increment: 1 },
+          documentType,
+          documentTypeReason,
           supplyType: supply,
           placeOfSupplyCode: recipient.stateCode,
           recipient: recipient as unknown as Prisma.InputJsonValue,
@@ -414,7 +444,9 @@ export class InvoicesService {
         action: 'invoice.draft_updated',
         entityType: 'invoice',
         entityId: id,
-        after: { lines: input.lines.length },
+        before: { documentType: invoice.documentType },
+        after: { lines: input.lines.length, documentType },
+        ...(documentTypeReason ? { reason: documentTypeReason } : {}),
       });
     });
     return this.get(principal, id);
@@ -488,7 +520,7 @@ export class InvoicesService {
             throw new AppException(
               HttpStatus.CONFLICT,
               'NOTHING_TO_INVOICE',
-              'Add at least one chargeable line.',
+              'Add at least one line.',
             );
           const job = await tx.serviceJob.findUniqueOrThrow({
             where: { id: invoice.jobId },
@@ -520,14 +552,10 @@ export class InvoicesService {
             config.tax,
             supply,
             invoiceDate,
+            invoice.documentType,
           );
+          // Zero-value invoices are allowed (warranty / no-charge jobs, owner Q26).
           const totals = this.totalsData(computed, config.tax);
-          if (new D(totals.total).lte(0))
-            throw new AppException(
-              HttpStatus.CONFLICT,
-              'NOTHING_TO_INVOICE',
-              'The invoice total must be more than zero.',
-            );
           // Update in place so line IDs stay stable for credit notes and clients.
           for (const [i, c] of computed.entries()) {
             const line = lines[i];
@@ -549,14 +577,15 @@ export class InvoicesService {
               },
             });
           }
+          const billOfSupply = invoice.documentType === 'BILL_OF_SUPPLY';
           const format = await this.settings.get(
             principal.organizationId,
-            'numbering.invoiceNumber',
+            billOfSupply ? 'numbering.billOfSupplyNumber' : 'numbering.invoiceNumber',
             tx,
           );
           const number = await this.numbering.next(tx, {
             organizationId: principal.organizationId,
-            documentType: 'TAX_INVOICE',
+            documentType: invoice.documentType,
             format,
             timeZone: config.timezone,
             financialYearStartMonth: config.fyStartMonth,
@@ -615,6 +644,7 @@ export class InvoicesService {
             payload: {
               jobNumber: job.jobNumber,
               invoiceNumber: number,
+              documentLabel: INVOICE_DOCUMENT_LABELS[invoice.documentType],
               amount: totals.total,
               currency: config.currency,
             },
@@ -629,6 +659,7 @@ export class InvoicesService {
             entityId: id,
             after: {
               invoiceNumber: number,
+              documentType: invoice.documentType,
               total: totals.total,
               supplyType: supply,
               placeOfSupply: recipient.stateCode,
@@ -759,7 +790,9 @@ export class InvoicesService {
               ? exact.toDecimalPlaces(0, D.ROUND_HALF_UP)
               : exact;
           if (total.gt(remaining)) total = remaining;
-          if (total.lte(0))
+          // A zero-value invoice can only be cancelled as a whole, with a zero-value note.
+          const zeroValueCancel = fullCancellation && invoice.total.eq(0);
+          if (total.lte(0) && !zeroValueCancel)
             throw new AppException(
               HttpStatus.CONFLICT,
               'CREDIT_EXCEEDS_INVOICE',
@@ -820,6 +853,7 @@ export class InvoicesService {
             invoice: {
               number: invoice.invoiceNumber,
               date: invoice.invoiceDate?.toISOString().slice(0, 10) ?? null,
+              documentType: invoice.documentType,
             },
             supplier: invoice.supplier,
             recipient: invoice.recipient,
@@ -893,7 +927,7 @@ export class InvoicesService {
             where: { id: invoiceId },
             data: {
               creditedTotal: newCredited,
-              ...(newCredited.eq(invoice.total)
+              ...(newCredited.eq(invoice.total) && (invoice.total.gt(0) || zeroValueCancel)
                 ? { status: 'CANCELLED', cancelledAt: new Date() }
                 : {}),
             },
@@ -1078,6 +1112,7 @@ export class InvoicesService {
           invoiceNumber: r.invoiceNumber,
           invoiceDate: r.invoiceDate?.toISOString().slice(0, 10) ?? null,
           status: r.status,
+          documentType: r.documentType,
           jobId: r.jobId,
           jobNumber: r.job.jobNumber,
           customerName: recipient.name,
@@ -1087,7 +1122,7 @@ export class InvoicesService {
           total: m2(r.total),
           creditedTotal: m2(r.creditedTotal),
           balance: m2(balance),
-          paymentState: paymentState(r.total, r.creditedTotal, r.allocatedTotal),
+          paymentState: paymentState(r.total, r.creditedTotal, r.allocatedTotal, r.status),
         };
       }),
       total,
@@ -1101,8 +1136,10 @@ export function paymentState(
   total: Decimal,
   credited: Decimal,
   allocated: Decimal,
+  status?: Invoice['status'],
 ): Invoice['paymentState'] {
-  if (credited.gte(total)) return 'CREDITED';
+  // A zero-value invoice is settled (nothing due) unless it was cancelled.
+  if (status === 'CANCELLED' || (total.gt(0) && credited.gte(total))) return 'CREDITED';
   const open = total.minus(credited);
   if (allocated.gte(open)) return 'PAID';
   return allocated.gt(0) ? 'PARTLY_PAID' : 'UNPAID';
@@ -1135,6 +1172,8 @@ export function toInvoiceDto(
     invoiceNumber: invoice.invoiceNumber,
     financialYear: invoice.financialYear,
     status: invoice.status,
+    documentType: invoice.documentType,
+    documentTypeReason: invoice.documentTypeReason,
     invoiceDate: invoice.invoiceDate?.toISOString().slice(0, 10) ?? null,
     currency: invoice.currency,
     supplyType: invoice.supplyType,
@@ -1177,7 +1216,12 @@ export function toInvoiceDto(
     creditedTotal: m2(invoice.creditedTotal),
     paidTotal: m2(invoice.allocatedTotal),
     balance: m2(balance),
-    paymentState: paymentState(invoice.total, invoice.creditedTotal, invoice.allocatedTotal),
+    paymentState: paymentState(
+      invoice.total,
+      invoice.creditedTotal,
+      invoice.allocatedTotal,
+      invoice.status,
+    ),
     amountInWords: amountInWordsINR(m2(invoice.total)),
     notes: invoice.notes,
     rowVersion: invoice.rowVersion,

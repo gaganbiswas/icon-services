@@ -134,7 +134,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 
 | Table | Purpose / key rules |
 |-------|---------------------|
-| `invoices` | One per tax invoice; number unique per organisation (≤ 16 chars, assigned at issue), financial year, date, supply type, place of supply, supplier/recipient JSON snapshots, totals (taxable + CGST + SGST + IGST + round-off = total), credited and allocated running totals. CHECKs: totals add up; intra-state ⇒ no IGST, inter-state ⇒ no CGST/SGST; credited + allocated ≤ total; issued ⇒ number/date/supplier present; cancelled ⇔ fully credited. One draft per job. **Trigger:** issued rows frozen except running totals/cancellation; only drafts deletable |
+| `invoices` | One per tax invoice or Bill of Supply (`document_type`, `document_type_reason`; CHECK: a Bill of Supply has no CGST/SGST/IGST and a reason — ADR 0024); total may be 0 (warranty jobs); number unique per organisation (≤ 16 chars, assigned at issue), financial year, date, supply type, place of supply, supplier/recipient JSON snapshots, totals (taxable + CGST + SGST + IGST + round-off = total), credited and allocated running totals. CHECKs: totals add up; intra-state ⇒ no IGST, inter-state ⇒ no CGST/SGST; credited + allocated ≤ total; issued ⇒ number/date/supplier present; cancelled ⇔ fully credited. One draft per job. **Trigger:** issued rows frozen except running totals/cancellation; only drafts deletable |
 | `invoice_lines` | Line values with HSN/SAC, rate and CGST/SGST/IGST snapshot; credited quantity ≤ quantity. **Trigger:** editable only while the invoice is a draft (credited quantity may only grow) |
 | `invoice_tax_summaries` | HSN/SAC × rate totals written at issue; append-only |
 | `credit_notes`, `credit_note_lines` | Corrections (partial or full) with their own numbers and immutable snapshot; append-only |
@@ -167,6 +167,7 @@ Indexes: `(organization_id, created_at DESC)`, `(entity_type, entity_id)`, `(act
 | Migration | Contents |
 |-----------|----------|
 | `…_init` | All Phase 2 tables, CHECK constraints, append-only audit trigger |
+| `…_invoice_document_type` | Bill of Supply type, zero-value invoices and ₹0 cancellation notes, freeze covers the type |
 | `…_phase7_invoicing` | Invoices, lines, tax summaries, credit notes, allocations; CHECKs and triggers |
 | `…_phase11_mfa` | MFA tables |
 | `…_phase10_delivery_status` | `DeliveryStatus` value `SKIPPED_NOT_CONFIGURED` |

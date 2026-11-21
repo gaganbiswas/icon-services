@@ -23,7 +23,9 @@ export interface TaxDocLine {
 }
 
 export interface TaxDocSnapshot {
-  readonly kind: 'TAX_INVOICE' | 'CREDIT_NOTE';
+  readonly kind: 'TAX_INVOICE' | 'BILL_OF_SUPPLY' | 'CREDIT_NOTE';
+  /** Credit note against a Bill of Supply: printed without GST columns. */
+  readonly withoutGst?: boolean;
   readonly number: string;
   readonly date: string;
   readonly reference: { readonly label: string; readonly value: string } | null;
@@ -62,13 +64,22 @@ export interface TaxDocSnapshot {
 
 const half = (rate: string) => String(Number(rate) / 2);
 
+const TITLES = {
+  TAX_INVOICE: 'Tax Invoice',
+  BILL_OF_SUPPLY: 'Bill of Supply',
+  CREDIT_NOTE: 'Credit Note',
+} as const;
+
 /**
- * GST tax invoice / credit note (ADR 0022 field list). A4, grayscale-friendly,
- * every value escaped. Reprints use the stored snapshot, so values never change.
+ * GST tax invoice, Bill of Supply (no GST, ADR 0024) or credit note (ADR 0022
+ * field list). A4, grayscale-friendly, every value escaped. Reprints use the
+ * stored snapshot, so values never change.
  */
 export function renderTaxDocumentHtml(s: TaxDocSnapshot): string {
   const intra = s.supplyType === 'INTRA_STATE';
-  const title = s.kind === 'TAX_INVOICE' ? 'Tax Invoice' : 'Credit Note';
+  const gst = s.kind !== 'BILL_OF_SUPPLY' && s.withoutGst !== true;
+  const invoiceLike = s.kind !== 'CREDIT_NOTE';
+  const title = TITLES[s.kind];
   const party = (label: string, p: DocParty) => `
     <div class="party">
       <div class="label">${e(label)}</div>
@@ -77,18 +88,22 @@ export function renderTaxDocumentHtml(s: TaxDocSnapshot): string {
       <div>GSTIN: ${p.gstin ? `<strong>${e(p.gstin)}</strong>` : 'Unregistered'}</div>
       <div>State: ${e(p.stateName)} (code ${e(p.stateCode)})</div>
     </div>`;
-  const taxHead = intra
-    ? '<th class="num">CGST</th><th class="num">SGST</th>'
-    : '<th class="num">IGST</th>';
+  const taxHead = !gst
+    ? ''
+    : intra
+      ? '<th class="num">CGST</th><th class="num">SGST</th>'
+      : '<th class="num">IGST</th>';
   const taxCells = (l: {
     gstRate: string;
     cgstAmount: string;
     sgstAmount: string;
     igstAmount: string;
   }) =>
-    intra
-      ? `<td class="num">${e(l.cgstAmount)}<br><span class="rate">@${e(half(l.gstRate))}%</span></td><td class="num">${e(l.sgstAmount)}<br><span class="rate">@${e(half(l.gstRate))}%</span></td>`
-      : `<td class="num">${e(l.igstAmount)}<br><span class="rate">@${e(l.gstRate)}%</span></td>`;
+    !gst
+      ? ''
+      : intra
+        ? `<td class="num">${e(l.cgstAmount)}<br><span class="rate">@${e(half(l.gstRate))}%</span></td><td class="num">${e(l.sgstAmount)}<br><span class="rate">@${e(half(l.gstRate))}%</span></td>`
+        : `<td class="num">${e(l.igstAmount)}<br><span class="rate">@${e(l.gstRate)}%</span></td>`;
   const lines = s.lines
     .map(
       (l, i) => `<tr>
@@ -96,7 +111,7 @@ export function renderTaxDocumentHtml(s: TaxDocSnapshot): string {
         <td>${e(l.description)}</td>
         <td>${e(l.hsnSac)}</td>
         <td class="num">${e(l.quantity)} ${e(l.unit)}</td>
-        ${s.kind === 'TAX_INVOICE' ? `<td class="num">${e(l.unitPrice ?? '')}</td><td class="num">${e(l.discount ?? '')}</td>` : ''}
+        ${invoiceLike ? `<td class="num">${e(l.unitPrice ?? '')}</td><td class="num">${e(l.discount ?? '')}</td>` : ''}
         <td class="num">${e(l.taxableValue)}</td>
         ${taxCells(l)}
       </tr>`,
@@ -167,12 +182,12 @@ export function renderTaxDocumentHtml(s: TaxDocSnapshot): string {
   </div>
 </div>
 <div class="parties">
-  ${party(s.kind === 'TAX_INVOICE' ? 'Bill to' : 'Issued to', s.recipient)}
+  ${party(invoiceLike ? 'Bill to' : 'Issued to', s.recipient)}
   <div class="party">
     <div class="label">Supply</div>
     <div>Place of supply: <strong>${e(s.placeOfSupply.name)} (${e(s.placeOfSupply.code)})</strong></div>
-    <div>${intra ? 'Intra-state supply (CGST + SGST)' : 'Inter-state supply (IGST)'}</div>
-    <div>Reverse charge: No</div>
+    <div>${!gst ? 'No GST charged' : intra ? 'Intra-state supply (CGST + SGST)' : 'Inter-state supply (IGST)'}</div>
+    ${gst ? '<div>Reverse charge: No</div>' : ''}
     <div>Currency: ${e(s.currency)}</div>
   </div>
 </div>
@@ -180,22 +195,26 @@ ${s.reason ? `<div class="reason">Reason: ${e(s.reason)}</div>` : ''}
 <table class="items">
   <thead><tr>
     <th>#</th><th>Description</th><th>HSN/SAC</th><th class="num">Qty</th>
-    ${s.kind === 'TAX_INVOICE' ? '<th class="num">Rate</th><th class="num">Discount</th>' : ''}
-    <th class="num">Taxable value</th>${taxHead}
+    ${invoiceLike ? '<th class="num">Rate</th><th class="num">Discount</th>' : ''}
+    <th class="num">${gst ? 'Taxable value' : 'Value'}</th>${taxHead}
   </tr></thead>
   <tbody>${lines}</tbody>
 </table>
 <table class="totals">
-  ${total('Taxable value', s.totals.taxable)}
-  ${intra ? `${total('CGST', s.totals.cgst)}${total('SGST', s.totals.sgst)}` : total('IGST', s.totals.igst)}
+  ${total(gst ? 'Taxable value' : 'Value', s.totals.taxable)}
+  ${!gst ? '' : intra ? `${total('CGST', s.totals.cgst)}${total('SGST', s.totals.sgst)}` : total('IGST', s.totals.igst)}
   ${s.totals.roundOff !== '0.00' ? total('Round off', s.totals.roundOff) : ''}
-  ${total(s.kind === 'TAX_INVOICE' ? `Total (${s.currency})` : `Credit total (${s.currency})`, s.totals.total, true)}
+  ${total(invoiceLike ? `Total (${s.currency})` : `Credit total (${s.currency})`, s.totals.total, true)}
 </table>
 <p class="words"><strong>Amount in words:</strong> ${e(s.amountInWords)}</p>
-<table class="hsn small">
+${
+  gst
+    ? `<table class="hsn small">
   <thead><tr><th>HSN/SAC</th><th class="num">GST rate</th><th class="num">Taxable value</th>${intra ? '<th class="num">CGST</th><th class="num">SGST</th>' : '<th class="num">IGST</th>'}</tr></thead>
   <tbody>${hsn}</tbody>
-</table>
+</table>`
+    : ''
+}
 ${s.terms ? `<div class="terms small${s.termsArePlaceholder ? ' placeholder' : ''}">${e(s.terms)}</div>` : ''}
 ${s.declaration ? `<p class="small">${e(s.declaration)}</p>` : ''}
 <div class="sign">
