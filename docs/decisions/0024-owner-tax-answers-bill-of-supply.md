@@ -17,7 +17,7 @@
 | 13 | April to March | `invoicing.financialYearStartMonth = 4` |
 | 14–15 | 19AHDPB5074F1ZK, regular | Unchanged |
 | 16 | "Supply" → staff choose per invoice | **Bill of Supply** option, below |
-| 17 | 18 % | Services/labour and parts at 18 % (HSN/SAC codes still suggestions: SAC 998713, HSN 8473) |
+| 17 | 18 %; codes confirmed 2026-11-23 | Services/labour SAC 998713 and parts HSN 8473, both 18 % |
 | 18 | CGST+SGST same state, IGST otherwise | As built (ADR 0022) |
 | 19 | GST added on top (confirmed) | Tax-exclusive prices |
 | 20 | Yes | Total rounded to the nearest rupee with a "Round off" line |
@@ -55,4 +55,4 @@
 ## Still required before production
 
 The tax configuration stays **unapproved until someone records the approval** in Settings → Business and
-invoicing (who and when). HSN/SAC codes remain open.
+invoicing (who and when). Rates and HSN/SAC codes are confirmed by the owner.

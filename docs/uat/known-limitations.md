@@ -2,7 +2,7 @@
 
 | Area | Limitation | Why / plan |
 |------|-----------|-----------|
-| Invoicing and tax | Owner's answers applied (ADR 0024). HSN/SAC codes are still suggestions and the tax configuration must be approved in settings before issuing; e-invoicing and e-way bills are not generated (owner: not applicable); tax-inclusive pricing not supported (owner: not needed). A Bill of Supply is issued whenever staff choose it (owner rule, ADR 0024) | Accountant to confirm HSN/SAC codes |
+| Invoicing and tax | Owner's answers applied (ADR 0024). Rates and HSN/SAC codes are owner-confirmed; the tax configuration must still be approved in settings (who/when) before issuing; e-invoicing and e-way bills are not generated (owner: not applicable); tax-inclusive pricing not supported (owner: not needed). A Bill of Supply is issued whenever staff choose it (owner rule, ADR 0024) | Record the approval in settings on each deployment |
 | Customer web portal | Tracking, estimate decisions and documents only; new complaints are raised in the Android app or at reception | ADR 0023; add a web complaint form if wanted |
 | Balances | Before a job's invoice is issued, "outstanding" and the delivery balance use the approved estimate | Switches to the invoice automatically once issued (ADR 0022) |
 | Stock value | Indicative only (latest purchase cost) | Valuation method to be confirmed by the accountant |

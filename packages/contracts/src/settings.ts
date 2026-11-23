@@ -320,7 +320,8 @@ export const SETTINGS = {
   tax: {
     schema: TaxSettingsSchema,
     default: {
-      // SUGGESTED, NOT APPROVED (ADR 0022): review with the accountant, then approve in the admin panel.
+      // Owner-confirmed values (ADR 0024: 18 %, SAC 998713, HSN 8473). Ships as DRAFT: each deployment records
+      // who approved it, and when, in the admin panel before invoices can be issued.
       status: 'DRAFT',
       approval: null,
       pricing: 'TAX_EXCLUSIVE',
