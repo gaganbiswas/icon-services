@@ -43,8 +43,9 @@ bun run db:seed:dev           # dev-only: placeholder org/branch + Super Admin f
 bun run dev                   # API :4000, admin :5173, web :3000, Expo (Metro)
 ```
 
-Estimates require the business currency: `PUT /api/v1/settings/money` with `{"value":{"currency":"<ISO code>"},"reason":"…"}`
-(not assumed — owner question B11). Approval links open on the customer website (`apps/web`, http://localhost:3000/estimate).
+Before estimates and invoices, set the business details, currency (INR) and tax approval in the admin panel under
+**Settings → Business and invoicing** (values in `docs/production/README.md`). Approval links open on the customer
+website (`apps/web`, http://localhost:3000/estimate); customers sign in at http://localhost:3000/account.
 
 Notifications are sent by a separate worker process (mock WhatsApp/email providers until Phase 10):
 `bun run --filter @icon/api build && bun run --filter @icon/api start:worker`.
