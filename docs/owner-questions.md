@@ -40,7 +40,7 @@ Answered by the owner on 2026-11-21 (ADR 0024).
 
 14. GST registration / GSTIN. **Yes — 19AHDPB5074F1ZK (West Bengal).**
 15. Composition or regular scheme. **Regular.**
-16. When is a Bill of Supply (no GST) issued? **Staff choose per invoice, with a recorded reason.** (Supersedes "GST only" in ADR 0021.) The accountant should confirm which cases qualify.
+16. When is a Bill of Supply (no GST) issued? **Staff choose per invoice, with a recorded reason.** (Supersedes "GST only" in ADR 0021.) Confirmed 2026-11-23: used whenever staff select it for an invoice.
 17. Tax rates. **18 %.** HSN/SAC codes not given — suggestions in use: SAC 998713 (services/labour), HSN 8473 (parts). _HSN/SAC to confirm._
 18. Place of supply. **CGST + SGST within West Bengal, IGST otherwise.**
 19. Tax-inclusive or tax-exclusive prices. **GST added on top (tax-exclusive), all lines.**

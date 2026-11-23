@@ -41,8 +41,8 @@
 - PDF titled "Bill of Supply", no GST columns, totals or GST summary, "No GST charged".
 - The GST summary report excludes Bills of Supply (and their credit notes) from every GST figure and reports
   them on a separate line.
-- The system does **not** decide when a Bill of Supply is legally appropriate; the accountant should confirm
-  the cases staff use it for.
+- **Rule (owner, 2026-11-23): a Bill of Supply is used whenever staff select it for an invoice.** The system adds no
+  automatic conditions; the required reason and the audit record are the controls.
 
 ## Zero-value invoices
 

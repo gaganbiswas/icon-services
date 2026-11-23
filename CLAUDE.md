@@ -341,8 +341,9 @@ Accounts staff may instead issue a **Bill of Supply** (no GST, own number
 series) for a specific invoice, giving a reason that is stored and audited
 (owner decision, ADR 0024). The invoice model's `document_type` field holds
 the choice; a database check guarantees a Bill of Supply carries no tax.
-Do not invent the situations in which a Bill of Supply applies; staff
-decide, and the accountant should review.
+Rule (owner, 2026-11-23): a Bill of Supply is used whenever staff select
+it for an invoice. Do not add automatic rules or restrictions on when it
+applies; keep the required reason and audit record.
 
 Invoice requirements: - Unique invoice number by branch/series/financial
 year, generated safely under concurrent requests. - Link to job,

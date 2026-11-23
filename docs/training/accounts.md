@@ -10,8 +10,8 @@
   CGST/SGST (customers in West Bengal) or IGST (other states, from the customer's GSTIN or address) → **Issue tax
   invoice**. It gets the next number (e.g. MT/2627/1) and can never be edited.
 - **Bill of supply** (no GST): on the draft choose "Bill of supply (no GST)", write why no GST is charged (kept on
-  record), **Save and recalculate**, then issue. It is numbered BS/2627/… and printed without GST. Use it only in the
-  cases your accountant has agreed.
+  record), **Save and recalculate**, then issue. It is numbered BS/2627/… and printed without GST. Choosing it is your
+  decision for that invoice (business rule); the reason you write is kept on the invoice and in the audit log.
 - **Warranty jobs**: warranty and goodwill items appear on the invoice at ₹0; a fully warranty job gets a ₹0 invoice.
   A ₹0 invoice can only be cancelled as a whole.
 - Payments already taken for the job are applied to the invoice automatically; later payments too.
